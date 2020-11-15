@@ -1,21 +1,19 @@
 import {
   Service,
   PlatformAccessory,
-  CharacteristicChange,
   CharacteristicValue,
   CharacteristicSetCallback,
   CharacteristicGetCallback,
-  CharacteristicEventTypes,
 } from 'homebridge';
 
-import { ZigbeeHerdsmanPlatform } from './platform';
+import { ZigbeeHerdsmanPlatform } from '../platform';
 
 /**
  * Platform Accessory
  * An instance of this class is created for each accessory your platform registers
  * Each accessory may expose multiple services of different service types.
  */
-export class ExamplePlatformAccessory {
+export class ZigbeePlatformAccessory {
   private service: Service;
 
   /**
@@ -87,18 +85,18 @@ export class ExamplePlatformAccessory {
      * the `updateCharacteristic` method.
      *
      */
-    // let motionDetected = false;
-    // setInterval(() => {
-    //   // EXAMPLE - inverse the trigger
-    //   motionDetected = !motionDetected;
+    let motionDetected = false;
+    setInterval(() => {
+      // EXAMPLE - inverse the trigger
+      motionDetected = !motionDetected;
 
-    //   // push the new value to HomeKit
-    //   motionSensorOneService.updateCharacteristic(this.platform.Characteristic.MotionDetected, motionDetected);
-    //   motionSensorTwoService.updateCharacteristic(this.platform.Characteristic.MotionDetected, !motionDetected);
+      // push the new value to HomeKit
+      motionSensorOneService.updateCharacteristic(this.platform.Characteristic.MotionDetected, motionDetected);
+      motionSensorTwoService.updateCharacteristic(this.platform.Characteristic.MotionDetected, !motionDetected);
 
-    //   this.platform.log.debug('Triggering motionSensorOneService:', motionDetected);
-    //   this.platform.log.debug('Triggering motionSensorTwoService:', !motionDetected);
-    // }, 10000);
+      this.platform.log.debug('Triggering motionSensorOneService:', motionDetected);
+      this.platform.log.debug('Triggering motionSensorTwoService:', !motionDetected);
+    }, 10000);
   }
 
   /**
@@ -116,18 +114,18 @@ export class ExamplePlatformAccessory {
   }
 
   /**
-   * Handle the "GET" requests from HomeKit
-   * These are sent when HomeKit wants to know the current state of the accessory, for example, checking if a Light bulb is on.
-   * 
-   * GET requests should return as fast as possbile. A long delay here will result in
-   * HomeKit being unresponsive and a bad user experience in general.
-   * 
-   * If your device takes time to respond you should update the status of your device
-   * asynchronously instead using the `updateCharacteristic` method instead.
-
-   * @example
-   * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
-   */
+     * Handle the "GET" requests from HomeKit
+     * These are sent when HomeKit wants to know the current state of the accessory, for example, checking if a Light bulb is on.
+     * 
+     * GET requests should return as fast as possbile. A long delay here will result in
+     * HomeKit being unresponsive and a bad user experience in general.
+     * 
+     * If your device takes time to respond you should update the status of your device
+     * asynchronously instead using the `updateCharacteristic` method instead.
+  
+     * @example
+     * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
+     */
   getOn(callback: CharacteristicGetCallback) {
     // implement your own code to check if the device is on
     const isOn = this.exampleStates.On;
@@ -152,49 +150,5 @@ export class ExamplePlatformAccessory {
 
     // you must call the callback function
     callback(null);
-  }
-}
-
-export class TestSwitch {
-  private service: Service;
-
-  constructor(private readonly platform: ZigbeeHerdsmanPlatform, private readonly accessory: PlatformAccessory) {
-    const Characteristic = this.platform.Characteristic;
-    // set accessory information
-    this.accessory
-      .getService(this.platform.Service.AccessoryInformation)!
-      .setCharacteristic(Characteristic.Manufacturer, 'Test-Manufacturer')
-      .setCharacteristic(Characteristic.Model, 'Test-Model')
-      .setCharacteristic(Characteristic.SerialNumber, 'Test-Serial');
-
-    // get the LightBulb service if it exists, otherwise create a new LightBulb service
-    // you can create multiple services for each accessory
-    this.service =
-      this.accessory.getService(this.platform.Service.StatelessProgrammableSwitch) ||
-      this.accessory.addService(this.platform.Service.StatelessProgrammableSwitch);
-
-    // set the service name, this is what is displayed as the default name on the Home app
-    // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
-    this.service.setCharacteristic(Characteristic.Name, accessory.context.device.exampleDisplayName);
-
-    this.service.getCharacteristic(this.platform.Characteristic.ProgrammableSwitchEvent).setProps({
-      validValues: [Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS],
-    });
-
-    let btnState = false;
-    this.service
-      .getCharacteristic(Characteristic.ProgrammableSwitchOutputState)
-      .on(CharacteristicEventTypes.SET, async (change: CharacteristicChange) => {
-        btnState = !btnState;
-        // change(null, btnState ? 1 : 0);
-      })
-      .on(CharacteristicEventTypes.GET, async (callback: CharacteristicGetCallback) => {
-        callback(null, btnState ? 1 : 0);
-      });
-  }
-
-  trigger() {
-    const ProgrammableSwitchEvent = this.platform.Characteristic.ProgrammableSwitchEvent;
-    this.service.getCharacteristic(ProgrammableSwitchEvent).setValue(ProgrammableSwitchEvent.SINGLE_PRESS);
   }
 }
