@@ -26,8 +26,10 @@
 [11/15/2020, 10:56:43 AM] [ZigbeeHerdsman] Device '0x842e14fffea7f77f' announced itself
 [11/15/2020, 10:56:48 AM] [ZigbeeHerdsman] Received Zigbee message from '0x842e14fffea7f77f', type 'readResponse', cluster 'genBasic', data '{"modelId":"TRADFRI bulb E27 CWS opal 600lm"}' from endpoint 1
 [11/15/2020, 10:56:48 AM] [ZigbeeHerdsman] Received Zigbee message from '0x842e14fffea7f77f', type 'readResponse', cluster 'genBasic', data '{"manufacturerName":"IKEA of Sweden"}' from endpoint 1
-[11/15/2020, 10:56:49 AM] [ZigbeeHerdsman] Received Zigbee message from '0x842e14fffea7f77f', type 'readResponse', cluster 'genBasic', data '{"powerSource":1}' from endpoint 1[11/15/2020, 10:56:49 AM] [ZigbeeHerdsman] Received Zigbee message from '0x842e14fffea7f77f', type 'readResponse', cluster 'genBasic', data '{"zclVersion":1}' from endpoint 1
-[11/15/2020, 10:56:49 AM] [ZigbeeHerdsman] Received Zigbee message from '0x842e14fffea7f77f', type 'readResponse', cluster 'genBasic', data '{"appVersion":17}' from endpoint 1[11/15/2020, 10:56:49 AM] [ZigbeeHerdsman] Received Zigbee message from '0x842e14fffea7f77f', type 'readResponse', cluster 'genBasic', data '{"stackVersion":87}' from endpoint 1
+[11/15/2020, 10:56:49 AM] [ZigbeeHerdsman] Received Zigbee message from '0x842e14fffea7f77f', type 'readResponse', cluster 'genBasic', data '{"powerSource":1}' from endpoint 1
+[11/15/2020, 10:56:49 AM] [ZigbeeHerdsman] Received Zigbee message from '0x842e14fffea7f77f', type 'readResponse', cluster 'genBasic', data '{"zclVersion":1}' from endpoint 1
+[11/15/2020, 10:56:49 AM] [ZigbeeHerdsman] Received Zigbee message from '0x842e14fffea7f77f', type 'readResponse', cluster 'genBasic', data '{"appVersion":17}' from endpoint 1
+[11/15/2020, 10:56:49 AM] [ZigbeeHerdsman] Received Zigbee message from '0x842e14fffea7f77f', type 'readResponse', cluster 'genBasic', data '{"stackVersion":87}' from endpoint 1
 [11/15/2020, 10:56:49 AM] [ZigbeeHerdsman] Get Characteristic On -> false
 [11/15/2020, 10:56:49 AM] [ZigbeeHerdsman] Set Characteristic Brightness ->  100
 [11/15/2020, 10:56:49 AM] [ZigbeeHerdsman] Set Characteristic On -> true

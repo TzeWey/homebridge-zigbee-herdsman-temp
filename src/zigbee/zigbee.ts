@@ -3,13 +3,21 @@ import { Logger } from 'homebridge';
 import { Controller } from 'zigbee-herdsman';
 import stringify from 'json-stable-stringify-without-jsonify';
 import { findByDevice } from 'zigbee-herdsman-converters';
+import {
+  Events as HerdsmanEvents,
+  MessagePayload,
+  DeviceJoinedPayload,
+  DeviceInterviewPayload,
+  DeviceAnnouncePayload,
+  DeviceLeavePayload,
+} from 'zigbee-herdsman/dist/controller/events';
 
 import { ZigbeeConfig, ZigbeeEntity, ZigbeeDefinition, Device, DeviceType, Group, Events } from './types';
 
 export class Zigbee extends EventEmitter {
   private herdsman!: Controller;
 
-  constructor(private readonly config: ZigbeeConfig, private readonly log: Logger = console) {
+  constructor(private readonly log: Logger, private readonly config: ZigbeeConfig) {
     super();
     this.herdsman = new Controller({
       network: {
@@ -44,16 +52,15 @@ export class Zigbee extends EventEmitter {
       throw error;
     }
 
-    this.log.info('zigbee-herdsman started');
     this.log.info(`Coordinator firmware version: '${stringify(await this.getCoordinatorVersion())}'`);
     this.log.debug(`Zigbee network parameters: ${stringify(await this.getNetworkParameters())}`);
 
-    this.herdsman.on(Events.adapterDisconnected, () => this.emit(Events.adapterDisconnected));
-    this.herdsman.on(Events.deviceAnnounce, (data) => this.emit(Events.deviceAnnounce, data));
-    this.herdsman.on(Events.deviceInterview, (data) => this.emit(Events.deviceInterview, data));
-    this.herdsman.on(Events.deviceJoined, (data) => this.emit(Events.deviceJoined, data));
-    this.herdsman.on(Events.deviceLeave, (data) => this.emit(Events.deviceLeave, data));
-    this.herdsman.on(Events.message, (data) => this.emit(Events.message, data));
+    this.herdsman.on(HerdsmanEvents.adapterDisconnected, () => this.emit(Events.adapterDisconnected));
+    this.herdsman.on(HerdsmanEvents.deviceAnnounce, this.onZigbeeDeviceAnnounce.bind(this));
+    this.herdsman.on(HerdsmanEvents.deviceInterview, this.onZigbeeDeviceInterview.bind(this));
+    this.herdsman.on(HerdsmanEvents.deviceJoined, this.onZigbeeDeviceJoined.bind(this));
+    this.herdsman.on(HerdsmanEvents.deviceLeave, this.onZigbeeDeviceLeave.bind(this));
+    this.herdsman.on(HerdsmanEvents.message, this.onZigbeeMessage.bind(this));
     this.log.debug('Registered zigbee-herdsman event handlers');
 
     // Check if we have to turn off the led
@@ -66,13 +73,89 @@ export class Zigbee extends EventEmitter {
       await this.herdsman.setTransmitPower(this.config.transmitPower);
       this.log.info(`Set transmit power to '${this.config.transmitPower}'`);
     }
+
+    this.log.info('zigbee-herdsman started');
+    this.emit(Events.started);
   }
 
   async stop() {
+    this.emit(Events.stop);
     await this.herdsman.stop();
     this.log.info('zigbee-herdsman stopped');
   }
 
+  /**
+   * Internal Event Handlers
+   */
+  private async onZigbeeMessage(data: MessagePayload) {
+    const name = data.device && data.device.ieeeAddr;
+    const resolvedEntity = this.resolveEntity(data.device);
+    this.log.debug(
+      `Received Zigbee message from '${name}', type '${data.type}', cluster '${data.cluster}'` +
+        `, data '${stringify(data.data)}' from endpoint ${data.endpoint.ID}` +
+        (data.groupID ? ` with groupID ${data.groupID}` : ''),
+    );
+    this.emit(Events.message, data, resolvedEntity);
+  }
+
+  private async onZigbeeDeviceJoined(data: DeviceJoinedPayload) {
+    const name = data.device && data.device.ieeeAddr;
+    const resolvedEntity = this.resolveEntity(data.device);
+    this.log.info(`Device '${name}' joined`);
+    this.emit(Events.deviceJoined, data, resolvedEntity);
+  }
+
+  private async onZigbeeDeviceInterview(data: DeviceInterviewPayload) {
+    const name = data.device && data.device.ieeeAddr;
+    const resolvedEntity = this.resolveEntity(data.device);
+
+    switch (data.status) {
+      case 'successful':
+        this.log.info(`Successfully interviewed '${name}', device has successfully been paired`);
+        if (resolvedEntity.definition) {
+          const { vendor, description, model } = resolvedEntity.definition;
+          this.log.info(`Device '${name}' is supported, identified as: ${vendor} ${description} (${model})`);
+        } else {
+          this.log.warn(
+            `Device '${name}' with Zigbee model '${data.device.modelID}' is NOT supported, ` +
+              'please follow https://www.zigbee2mqtt.io/how_tos/how_to_support_new_devices.html',
+          );
+        }
+        break;
+
+      case 'failed':
+        this.log.error(`Failed to interview '${name}', device has not successfully been paired`);
+        break;
+
+      case 'started':
+        this.log.info(`Starting interview of '${name}'`);
+        break;
+
+      default:
+        this.log.error('Unknown DeviceInterview status!');
+        break;
+    }
+
+    this.emit(Events.deviceInterview, data, resolvedEntity);
+  }
+
+  private async onZigbeeDeviceAnnounce(data: DeviceAnnouncePayload) {
+    const name = data.device && data.device.ieeeAddr;
+    const resolvedEntity = this.resolveEntity(data.device);
+    this.log.debug(`Device '${name}' announced itself`);
+    this.emit(Events.deviceAnnounce, data, resolvedEntity);
+  }
+
+  private async onZigbeeDeviceLeave(data: DeviceLeavePayload) {
+    const ieeeAddr = data.ieeeAddr;
+    const resolvedEntity = this.resolveEntity(ieeeAddr);
+    this.log.warn(`Device '${ieeeAddr}' left the network`);
+    this.emit(Events.deviceLeave, data, resolvedEntity);
+  }
+
+  /**
+   * Public Functions
+   */
   async acceptJoiningDeviceHandler(ieeeAddr: string) {
     this.log.info(`Accepting joining whitelisted device '${ieeeAddr}'`);
     return true;
