@@ -73,8 +73,7 @@ export class DeferredPromise<T> implements Promise<T> {
 }
 
 export interface MessageQueueState<RESPONSE> {
-  timeoutPromise: Promise<void>;
-  commandPromise: Promise<void>;
+  timeoutPromise: Promise<RESPONSE>;
   responsePromise: DeferredPromise<RESPONSE>;
 }
 
@@ -90,13 +89,13 @@ export class MessageQueue<KEY, RESPONSE> {
     return this.queue.size;
   }
 
-  enqueue(key: KEY, commandPromise: Promise<void>, timeout = NaN): KEY {
+  enqueue(key: KEY, timeout = NaN): KEY {
     const messageTimeout = isNaN(timeout) ? this.defaultTimeout : timeout;
     const responsePromise = new DeferredPromise<RESPONSE>();
-    const timeoutPromise = new Promise<void>((resolve, reject) => {
+    const timeoutPromise = new Promise<RESPONSE>((resolve, reject) => {
       setTimeout(() => reject(new Error('message response timeout')), messageTimeout);
     });
-    this.queue.set(key, { timeoutPromise, commandPromise, responsePromise });
+    this.queue.set(key, { timeoutPromise, responsePromise });
     return key;
   }
 
@@ -127,20 +126,15 @@ export class MessageQueue<KEY, RESPONSE> {
       return state;
     });
 
-    // Wait for command or timeout
     const waitPromises = states.map((state) => {
-      return Promise.race([state.commandPromise, state.timeoutPromise]);
+      return Promise.race([state.timeoutPromise, state.responsePromise]);
     });
 
     try {
-      await Promise.all(waitPromises);
-    } catch (error) {
-      this.log.error(`error: '${error}'`);
-      this.log.debug('stack:', error.stack);
+      return await Promise.all(waitPromises);
+    } catch (e) {
+      this.log.debug('queue:', e.message);
       return [];
     }
-
-    const messagePromises = states.map((state) => state.responsePromise);
-    return Promise.all(messagePromises);
   }
 }

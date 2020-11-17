@@ -38,7 +38,7 @@ export abstract class ZigbeeAccessory {
     assert(this.accessory);
 
     this.zigbeeEntity = this.zigbee.resolveEntity(device);
-    this.messageQueue = new MessageQueue(this.log, secondsToMilliseconds(3));
+    this.messageQueue = new MessageQueue(this.log, secondsToMilliseconds(2));
 
     if (!this.zigbeeEntity) {
       this.log.error(`ZigbeeAccessory: failed to resolve device ${device.ieeeAddr}`);
@@ -86,7 +86,7 @@ export abstract class ZigbeeAccessory {
 
   public async processMessage(message: MessagePayload) {
     if (message.type === 'readResponse') {
-      const messageKey = `${message.device.ieeeAddr}|${message.endpoint.ID}`;
+      const messageKey = `${message.device.ieeeAddr}|${message.endpoint.ID}|${message.meta.zclTransactionSequenceNumber}`;
       this.messageQueue.processResponse(messageKey, message);
     } else {
       const state = this.getMessagePayload(message);
@@ -129,9 +129,7 @@ export abstract class ZigbeeAccessory {
     const converters = definition.toZigbee;
     const usedConverters: Map<number, any[]> = new Map();
     const device = this.device;
-    const waitKeys: string[] = [];
-    const promises: Promise<MessagePayload>[] = [];
-    const promises2: Promise<any>[] = [];
+    const responseKeys: string[] = [];
 
     // For each attribute call the corresponding converter
     for (const [keyIn, value] of this.getEntries(state)) {
@@ -183,60 +181,52 @@ export abstract class ZigbeeAccessory {
         state: this.cachedState,
       };
 
-      const messageKey = `${device.ieeeAddr}|${endpointOrGroupID}`;
+      if (type === 'set' && converter.convertSet) {
+        this.log.debug(`Publishing '${type}' '${key}' to '${resolvedEntity.name}'`);
+        const result = await converter.convertSet(actualTarget, key, value, meta).catch((error) => {
+          const message = `Publish '${type}' '${key}' to '${resolvedEntity.name}' failed: '${error}'`;
+          this.log.error(message);
+        });
 
-      try {
-        if (type === 'set' && converter.convertSet) {
-          this.log.debug(`Publishing '${type}' '${key}' to '${resolvedEntity.name}'`);
-          const result = await converter.convertSet(actualTarget, key, value, meta);
-
-          // It's possible for devices to get out of sync when writing an attribute that's not reportable.
-          // So here we re-read the value after a specified timeout, this timeout could for example be the
-          // transition time of a color change or for forcing a state read for devices that don't
-          // automatically report a new state when set.
-          // When reporting is requested for a device (report: true in device-specific settings) we won't
-          // ever issue a read here, as we assume the device will properly report changes.
-          // Only do this when the retrieve_state option is enabled for this device. (TODO: implement device specific settings)
-          if (resolvedEntity.type === 'device' && result && objectHasProperties(result, 'readAfterWriteTime')) {
-            setTimeout(
-              async () => converter.convertGet && converter.convertGet(actualTarget, key, meta),
-              result.readAfterWriteTime,
-            );
-          }
-          Object.assign(this.cachedState, result.state);
-        } else if (type === 'get' && converter.convertGet) {
-          this.log.debug(`Publishing '${type}' '${key}' to '${resolvedEntity.name}' with message key '${messageKey}'`);
-          const sequenceNumber = peekNextTransactionSequenceNumber();
-          this.log.warn('HACK: sequenceNumber:', sequenceNumber);
-          // promises.push(this.messageQueue.enqueue(messageKey));
-          // await converter.convertGet(actualTarget, key, meta);
-
-          const commandPromise = converter.convertGet(actualTarget, messageKey, meta).catch((error) => {
-            this.log.error(`Reading '${key}' to '${resolvedEntity.name}' failed: '${error}'`);
-            this.log.debug('stack:', error.stack);
-          });
-          waitKeys.push(this.messageQueue.enqueue(messageKey, commandPromise));
-        } else {
-          this.log.error(`No converter available for '${type}' '${key}' (${state[key]})`);
-          continue;
+        // It's possible for devices to get out of sync when writing an attribute that's not reportable.
+        // So here we re-read the value after a specified timeout, this timeout could for example be the
+        // transition time of a color change or for forcing a state read for devices that don't
+        // automatically report a new state when set.
+        // When reporting is requested for a device (report: true in device-specific settings) we won't
+        // ever issue a read here, as we assume the device will properly report changes.
+        // Only do this when the retrieve_state option is enabled for this device. (TODO: implement device specific settings)
+        if (resolvedEntity.type === 'device' && result && objectHasProperties(result, 'readAfterWriteTime')) {
+          setTimeout(
+            async () => converter.convertGet && converter.convertGet(actualTarget, key, meta),
+            result.readAfterWriteTime,
+          );
         }
-      } catch (error) {
-        const message = `Publish '${type}' '${key}' to '${resolvedEntity.name}' failed: '${error}'`;
-        this.log.error(message);
-        this.log.debug(error.stack);
-
-        const deferredMessage = this.messageQueue.dequeue(messageKey);
-        deferredMessage?.responsePromise.reject(error);
+        Object.assign(this.cachedState, result.state);
+      } else if (type === 'get' && converter.convertGet) {
+        const sequenceNumber = peekNextTransactionSequenceNumber();
+        const messageKey = `${device.ieeeAddr}|${endpointOrGroupID}|${sequenceNumber}`;
+        this.log.debug(`Publishing '${type}' '${key}' to '${resolvedEntity.name}' with message key '${messageKey}'`);
+        responseKeys.push(this.messageQueue.enqueue(messageKey));
+        converter.convertGet(actualTarget, key, meta).catch((error) => {
+          const message = `Publish '${type}' '${key}' to '${resolvedEntity.name}' failed: '${error}'`;
+          this.log.error(message);
+        });
+      } else {
+        this.log.error(`No converter available for '${type}' '${key}' (${state[key]})`);
+        continue;
       }
 
       usedConverters[endpointOrGroupID].push(converter);
     }
 
-    if (type === 'get' && waitKeys.length) {
-      this.log.debug(`TX ${waitKeys.length} messages for device ${device.modelID}`);
-      this.log.debug('waitKeys:', waitKeys);
-      const responses = await this.messageQueue.wait(waitKeys);
-      this.log.debug(`RX ${responses.length} messages for device ${device.modelID}`);
+    if (type === 'get' && responseKeys.length) {
+      this.log.debug(`TX ${responseKeys.length} message(s) for device ${device.modelID}`);
+      const responses = await this.messageQueue.wait(responseKeys);
+      this.log.debug(`RX ${responses.length} message(s) for device ${device.modelID}`);
+
+      if (responses.length === 0) {
+        throw new Error('no response received');
+      }
 
       responses.forEach((response) => {
         const payload = this.getMessagePayload(response);

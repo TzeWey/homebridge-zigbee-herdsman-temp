@@ -142,8 +142,16 @@ function isIkeaTradfriDevice(device) {
   return ikeaTradfriManufacturerID.includes(device.manufacturerID);
 }
 
-const millisecondsToSeconds = (milliseconds) => milliseconds / 1000;
-const secondsToMilliseconds = (seconds) => seconds * 1000;
+function removeItemOnce(arr, value) {
+  const index = arr.indexOf(value);
+  if (index > -1) {
+    arr.splice(index, 1);
+  }
+  return arr;
+}
+
+const millisecondsToSeconds = (milliseconds: number) => milliseconds / 1000;
+const secondsToMilliseconds = (seconds: number) => seconds * 1000;
 const getEndpointNames = () => endpointNames;
 
 export {
@@ -155,4 +163,5 @@ export {
   isIkeaTradfriDevice,
   formatDate,
   capitalize,
+  removeItemOnce,
 };
