@@ -5,7 +5,9 @@ import { ZigbeeHerdsmanPlatform } from '../platform';
 import { Device } from '../zigbee';
 import { ZigbeeAccessory } from './zigbeeAccessory';
 
-import { IkeaTadfriDim, IkeaTadfriDimColor } from './ikea';
+import { GenericOutlet } from './generic';
+import { IkeaMotionSensor, IkeaOnOffSwitch, IkeaTadfriDimColor } from './ikea';
+import { TuyaOnOffTripleSwitch } from './tuya';
 
 export interface ZigbeeAccessoryResolverCtor {
   new (platform: ZigbeeHerdsmanPlatform, accessory: PlatformAccessory, device: Device): ZigbeeAccessory;
@@ -19,15 +21,19 @@ export class ZigbeeAccessoryResolver {
     let vendor: string;
 
     /*
-     * GLEDOPTO
+     * TuYa
      */
-    vendor = 'GLEDOPTO';
-    this.registerResolver(vendor, ['GL-C-009'], IkeaTadfriDim);
+    vendor = 'TuYa';
+    this.registerResolver(vendor, ['TS0043'], TuyaOnOffTripleSwitch);
+    this.registerResolver(vendor, ['TS011F'], GenericOutlet);
 
     /*
      * IKEA
      */
     vendor = 'IKEA';
+    this.registerResolver(vendor, ['E1603/E1702'], GenericOutlet);
+    this.registerResolver(vendor, ['E1525/E1745'], IkeaMotionSensor);
+    this.registerResolver(vendor, ['E1743'], IkeaOnOffSwitch);
     this.registerResolver(vendor, ['LED1624G9'], IkeaTadfriDimColor);
   }
 

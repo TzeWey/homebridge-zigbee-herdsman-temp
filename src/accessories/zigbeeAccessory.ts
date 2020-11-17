@@ -14,7 +14,7 @@ import { MessageQueue } from '../util/messageQueue';
  * Each accessory may expose multiple services of different service types.
  */
 export abstract class ZigbeeAccessory {
-  private log: Logger = this.platform.log;
+  public readonly log: Logger = this.platform.log;
   private zigbee: Zigbee = this.platform.zigbee;
   private zigbeeEntity: ZigbeeEntity;
   private messageQueue: MessageQueue<string, MessagePayload>;
@@ -40,7 +40,7 @@ export abstract class ZigbeeAccessory {
     const Characteristic = this.platform.Characteristic;
     this.accessory
       .getService(this.platform.Service.AccessoryInformation)!
-      .setCharacteristic(Characteristic.Manufacturer, device.manufacturerName)
+      .setCharacteristic(Characteristic.Manufacturer, this.zigbeeEntity.definition?.vendor || device.manufacturerName)
       .setCharacteristic(Characteristic.Model, device.modelID)
       .setCharacteristic(Characteristic.SerialNumber, device.ieeeAddr)
       .setCharacteristic(Characteristic.Name, this.zigbeeEntity.definition?.description || '');
@@ -51,6 +51,14 @@ export abstract class ZigbeeAccessory {
     this.accessory.on('identify', this.onIdentify.bind(this));
 
     this.onReady();
+  }
+
+  public get state(): any {
+    return this.cachedState;
+  }
+
+  public get name(): string {
+    return this.zigbeeEntity.definition?.description || '';
   }
 
   public abstract resolveServices(): Service[];
@@ -72,7 +80,7 @@ export abstract class ZigbeeAccessory {
       const messageKey = `${message.device.ieeeAddr}|${message.endpoint.ID}`;
       this.messageQueue.processResponse(messageKey, message);
     } else {
-      const state = this.decodeMessagePayload(message);
+      const state = this.getMessagePayload(message);
       this.log.debug('Decoded state from incoming message', state);
       this.onStateUpdate(state);
     }
@@ -173,8 +181,6 @@ export abstract class ZigbeeAccessory {
           this.log.debug(`Publishing '${type}' '${key}' to '${resolvedEntity.name}'`);
           const result = await converter.convertSet(actualTarget, key, value, meta);
 
-          this.log.debug('result:', result);
-
           // It's possible for devices to get out of sync when writing an attribute that's not reportable.
           // So here we re-read the value after a specified timeout, this timeout could for example be the
           // transition time of a color change or for forcing a state read for devices that don't
@@ -211,13 +217,13 @@ export abstract class ZigbeeAccessory {
       usedConverters[endpointOrGroupID].push(converter);
     }
 
-    if (type === 'get' && this.messageQueue.length) {
-      this.log.debug(`Sent ${this.messageQueue.length} messages for device ${device.modelID}`);
+    if (type === 'get' && promises.length) {
+      this.log.debug(`Sent ${promises.length} messages for device ${device.modelID}`);
       const responses = await this.messageQueue.wait(promises);
       this.log.debug(`Received ${responses.length} messages for device ${device.modelID}`);
 
       responses.forEach((response) => {
-        const payload = this.decodeMessagePayload(response);
+        const payload = this.getMessagePayload(response);
         this.log.debug(`Decoded message for ${device.modelID}`, payload);
         Object.assign(this.cachedState, payload);
       });
@@ -227,7 +233,7 @@ export abstract class ZigbeeAccessory {
     return this.cachedState;
   }
 
-  private decodeMessagePayload(data: MessagePayload, options: Options = {}): any {
+  private getMessagePayload(data: MessagePayload, options: Options = {}): any {
     const payload = {};
     const resolvedEntity = this.zigbeeEntity;
 

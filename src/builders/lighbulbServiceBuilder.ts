@@ -17,71 +17,6 @@ export class LighbulbServiceBuilder extends ServiceBuilder {
       this.accessory.addService(this.platform.Service.Lightbulb);
   }
 
-  /**
-   * Private Functions
-   */
-  private async setOn(on: boolean) {
-    return await this.zigbeeAccessory.setDeviceState({ state: on ? 'ON' : 'OFF' });
-  }
-
-  private async getOnOffState() {
-    const payload = await this.zigbeeAccessory.getDeviceState({ state: 'ON' });
-    return payload.state === 'ON';
-  }
-
-  private async setBrightnessPercent(brightness_percent: number) {
-    const brightness = Math.round(Number(brightness_percent) * 2.55);
-    return await this.zigbeeAccessory.setDeviceState({ brightness });
-  }
-
-  private async getBrightnessPercent() {
-    const payload = await this.zigbeeAccessory.getDeviceState({ brightness: 0 });
-    return Math.round(Number(payload.brightness) / 2.55);
-  }
-
-  private async setColorTemperature(colorTemperature: number) {
-    return await this.zigbeeAccessory.setDeviceState({ color_temp: colorTemperature });
-  }
-
-  private async getColorTemperature() {
-    const payload = await this.zigbeeAccessory.getDeviceState({ color_temp: 0 });
-    return payload.color_temp;
-  }
-
-  private async setHue(hue: number) {
-    return await this.zigbeeAccessory.setDeviceState({ color: { hue } });
-  }
-
-  private async getHue() {
-    const payload = await this.zigbeeAccessory.getDeviceState({ color: { hue: 0 } });
-    return payload.color.hue;
-  }
-
-  private async setColorXY(x: number, y: number) {
-    return await this.zigbeeAccessory.setDeviceState({ color: { x, y } });
-  }
-
-  private async getColorXY() {
-    const payload = await this.zigbeeAccessory.getDeviceState({ color: { x: 0, y: 0 } });
-    return payload.color;
-  }
-
-  private async setColorRGB(r: number, g: number, b: number) {
-    return await this.zigbeeAccessory.setDeviceState({ color: { rgb: `${r},${g},${b}` } });
-  }
-
-  private async setSaturation(saturation: number) {
-    return await this.zigbeeAccessory.setDeviceState({ color: { s: saturation } });
-  }
-
-  private async getSaturation() {
-    const payload = await this.zigbeeAccessory.getDeviceState({ color: { s: 0 } });
-    return payload.color.s;
-  }
-
-  /**
-   * Public Builder Functions
-   */
   public withOnOff(): LighbulbServiceBuilder {
     const Characteristic = this.platform.Characteristic;
 
@@ -150,7 +85,7 @@ export class LighbulbServiceBuilder extends ServiceBuilder {
       .on(CharacteristicEventTypes.SET, async (value: CharacteristicValue, callback: CharacteristicSetCallback) => {
         try {
           const colorTemperature = value as number;
-          const state = await this.setColorTemperature(colorTemperature);
+          await this.setColorTemperature(colorTemperature);
           callback();
         } catch (e) {
           callback(e);
@@ -179,7 +114,7 @@ export class LighbulbServiceBuilder extends ServiceBuilder {
       .on(CharacteristicEventTypes.SET, async (value: CharacteristicValue, callback: CharacteristicSetCallback) => {
         try {
           const hue = value as number;
-          const state = await this.setHue(hue);
+          await this.setHue(hue);
           callback();
         } catch (e) {
           callback(e);

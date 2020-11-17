@@ -148,6 +148,11 @@ export class ZigbeeHerdsmanPlatform implements DynamicPlatformPlugin {
   private async discoverDevices() {
     // Loop through each known Zigbee Device
     this.zigbee.getDevices().forEach((device) => {
+      // Do not associate Coordinators with accessories
+      if (device.type === 'Coordinator') {
+        return;
+      }
+
       const uuid = this.api.hap.uuid.generate(device.ieeeAddr);
       this.log.info(`Initializing device ${device.ieeeAddr} [${uuid}]`);
 

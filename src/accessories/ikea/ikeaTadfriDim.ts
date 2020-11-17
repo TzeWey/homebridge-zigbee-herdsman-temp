@@ -1,6 +1,6 @@
+import { Service } from 'homebridge';
 import { ZigbeeAccessory } from '../zigbeeAccessory';
 import { LighbulbServiceBuilder } from '../../builders';
-import { Service } from 'homebridge';
 
 export class IkeaTadfriDim extends ZigbeeAccessory {
   protected service!: Service;
