@@ -48,7 +48,6 @@ export class ZigbeeConfigure {
 
   shouldConfigure(resolvedEntity: ZigbeeEntity) {
     if (!resolvedEntity || !resolvedEntity.definition || !resolvedEntity.definition.configure) {
-      this.log.debug(`Skipped '${resolvedEntity.name}' configuration: no configure defined`);
       return false;
     }
 
@@ -58,12 +57,10 @@ export class ZigbeeConfigure {
       Object.prototype.hasOwnProperty.call((<any>resolvedEntity.device).meta, 'configured') &&
       (<any>resolvedEntity.device).meta.configured === resolvedEntity.definition?.meta?.configureKey
     ) {
-      this.log.debug(`Skipped '${resolvedEntity.name}' configuration: already configured`);
       return false;
     }
 
     if (resolvedEntity.device?.interviewing === true) {
-      this.log.debug(`Skipped '${resolvedEntity.name}' configuration: interviewing`);
       return false;
     }
 

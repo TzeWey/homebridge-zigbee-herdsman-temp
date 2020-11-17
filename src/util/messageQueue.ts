@@ -72,42 +72,40 @@ export class DeferredPromise<T> implements Promise<T> {
   }
 }
 
-export interface MessageQueueState<KEY, RESPONSE> {
-  timestamp: number;
-  key: KEY;
-  deferredPromise: DeferredPromise<RESPONSE>;
+export interface MessageQueueState<RESPONSE> {
+  timeoutPromise: Promise<void>;
+  commandPromise: Promise<void>;
+  responsePromise: DeferredPromise<RESPONSE>;
 }
 
 export class MessageQueue<KEY, RESPONSE> {
-  private readonly queue: MessageQueueState<KEY, RESPONSE>[];
-  private readonly timeout: Timeout;
+  private readonly queue: Map<KEY, MessageQueueState<RESPONSE>>;
 
-  constructor(private readonly log: Logger, private readonly timeoutValue: number) {
-    assert(timeoutValue && timeoutValue > 0);
-
-    this.queue = [];
-    this.timeout = setTimeout(() => {
-      this.cleanPending(timeoutValue);
-    }, timeoutValue);
+  constructor(private readonly log: Logger, private readonly defaultTimeout: number) {
+    assert(defaultTimeout && defaultTimeout > 0);
+    this.queue = new Map<KEY, MessageQueueState<RESPONSE>>();
   }
 
-  public get length() {
-    return this.queue.length;
+  public get size() {
+    return this.queue.size;
   }
 
-  enqueue(key: KEY): Promise<RESPONSE> {
-    const timestamp = new Date().getTime();
-    const deferredPromise = new DeferredPromise<RESPONSE>();
-    this.queue.push({ timestamp, key, deferredPromise });
-    return deferredPromise.promise;
+  enqueue(key: KEY, commandPromise: Promise<void>, timeout = NaN): KEY {
+    const messageTimeout = isNaN(timeout) ? this.defaultTimeout : timeout;
+    const responsePromise = new DeferredPromise<RESPONSE>();
+    const timeoutPromise = new Promise<void>((resolve, reject) => {
+      setTimeout(() => reject(new Error('message response timeout')), messageTimeout);
+    });
+    this.queue.set(key, { timeoutPromise, commandPromise, responsePromise });
+    return key;
   }
 
-  dequeue(key: KEY): MessageQueueState<KEY, RESPONSE> | null {
-    const index = this.queue.findIndex((qm) => qm.key === key);
-    if (index >= 0) {
-      return this.queue.splice(index, 1)[0];
+  dequeue(key: KEY): MessageQueueState<RESPONSE> | undefined {
+    const state = this.queue.get(key);
+    if (state) {
+      this.queue.delete(key);
     }
-    return null;
+    return state;
   }
 
   processResponse(key: KEY, response: RESPONSE) {
@@ -116,37 +114,33 @@ export class MessageQueue<KEY, RESPONSE> {
       this.log.warn(`processResponse: key '${key}' not found`);
       return;
     }
-    state.deferredPromise.resolve(response);
+    state.responsePromise.resolve(response);
   }
 
-  async wait(promises: Promise<RESPONSE>[]): Promise<RESPONSE[]> {
-    const responses = await Promise.all<RESPONSE>(promises);
-    this.queue.splice(this.queue.length);
-    return responses;
-  }
-
-  flush(shutdown?: boolean): void {
-    if (shutdown) {
-      this.queue.forEach((value) => value.deferredPromise.reject(new Error('flushing queue')));
-    }
-    this.queue.length = 0;
-  }
-
-  cleanPending(timeoutValue: number) {
-    const currentTime = new Date().getTime();
-    const toKeep = this.queue.reduce((keep: MessageQueueState<KEY, RESPONSE>[], value) => {
-      const delta = currentTime - value.timestamp;
-      if (delta > timeoutValue) {
-        const message = JSON.stringify(value.key);
-        this.log.error(`Rejecting unresolved promise after ${delta}ms (${message})`);
-        value.deferredPromise.reject(new Error(`Timeout for message:  ${message}`));
-        return keep;
+  async wait(keys: KEY[]): Promise<RESPONSE[]> {
+    assert(keys && keys.length > 0);
+    const states = keys.map((key) => {
+      const state = this.queue.get(key);
+      if (!state) {
+        throw new Error(`state with key '${key}' could not be found`);
       }
-      keep.push(value);
-      return keep;
-    }, []);
-    this.flush();
-    this.queue.push(...toKeep);
-    this.timeout.refresh();
+      return state;
+    });
+
+    // Wait for command or timeout
+    const waitPromises = states.map((state) => {
+      return Promise.race([state.commandPromise, state.timeoutPromise]);
+    });
+
+    try {
+      await Promise.all(waitPromises);
+    } catch (error) {
+      this.log.error(`error: '${error}'`);
+      this.log.debug('stack:', error.stack);
+      return [];
+    }
+
+    const messagePromises = states.map((state) => state.responsePromise);
+    return Promise.all(messagePromises);
   }
 }

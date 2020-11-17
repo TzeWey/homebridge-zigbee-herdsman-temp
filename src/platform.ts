@@ -13,7 +13,6 @@ import * as path from 'path';
 import retry from 'async-retry';
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
-import { ExamplePlatformAccessory, TestSwitch } from './platformAccessory';
 import { Zigbee, ZigbeeEntity, ZigbeeConfigure, ZigbeeOnEvent, Events, MessagePayload, ZigbeePing } from './zigbee';
 import { ZigbeeAccessory, ZigbeeAccessoryResolver } from './accessories';
 
@@ -38,6 +37,7 @@ export class ZigbeeHerdsmanPlatform implements DynamicPlatformPlugin {
 
   constructor(public readonly log: Logger, public readonly config: PlatformConfig, public readonly api: API) {
     const databasePath = path.join(this.api.user.storagePath(), 'zigbee.db');
+    const coordinatorBackupPath = path.join(this.api.user.storagePath(), 'coordinator.json');
     this.zigbee = new Zigbee(this.log, {
       port: '/dev/ttyNET3',
       disableLED: false,
@@ -46,7 +46,7 @@ export class ZigbeeHerdsmanPlatform implements DynamicPlatformPlugin {
       channel: 11,
       networkKey: [0x01, 0x03, 0x05, 0x07, 0x09, 0x0b, 0x0d, 0x0f, 0x00, 0x02, 0x04, 0x06, 0x08, 0x0a, 0x0c, 0x0d],
       databasePath,
-      coordinatorBackupPath: databasePath + '.backup',
+      coordinatorBackupPath,
     });
 
     this.zigbeeAccessoryResolver = new ZigbeeAccessoryResolver(this);

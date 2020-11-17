@@ -56,7 +56,7 @@ export class LighbulbServiceBuilder extends ServiceBuilder {
         const brightness_percent = value as number;
         try {
           const state = await this.setBrightnessPercent(brightness_percent);
-          this.log.debug(`Set Brightness for ${this.accessory.displayName}`, state.brightness);
+          this.log.debug(`Set Brightness for ${this.accessory.displayName}`, state.brightness_percent);
           callback();
         } catch (e) {
           callback(e);

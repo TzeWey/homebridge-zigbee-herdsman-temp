@@ -9,13 +9,13 @@ import { GenericOutlet } from './generic';
 import { IkeaMotionSensor, IkeaOnOffSwitch, IkeaTadfriDimColor } from './ikea';
 import { TuyaOnOffTripleSwitch } from './tuya';
 
-export interface ZigbeeAccessoryResolverCtor {
+export interface ZigbeeAccessoryCtor {
   new (platform: ZigbeeHerdsmanPlatform, accessory: PlatformAccessory, device: Device): ZigbeeAccessory;
 }
 
 export class ZigbeeAccessoryResolver {
   private readonly log: Logger = this.platform.log;
-  private readonly registry: Map<string, ZigbeeAccessoryResolverCtor> = new Map();
+  private readonly registry: Map<string, ZigbeeAccessoryCtor> = new Map();
 
   constructor(private readonly platform: ZigbeeHerdsmanPlatform) {
     let vendor: string;
@@ -41,11 +41,11 @@ export class ZigbeeAccessoryResolver {
     return `${vendor}:${model}`;
   }
 
-  private registerResolver(vendor: string, models: string[], ctor: ZigbeeAccessoryResolverCtor) {
+  private registerResolver(vendor: string, models: string[], ctor: ZigbeeAccessoryCtor) {
     models.forEach((model) => this.registry.set(this.getKey(vendor, model), ctor));
   }
 
-  public getAccessoryClass(device: Device): ZigbeeAccessoryResolverCtor | undefined {
+  public getAccessoryClass(device: Device): ZigbeeAccessoryCtor | undefined {
     const definition = findByDevice(device);
     if (!definition) {
       this.log.warn(

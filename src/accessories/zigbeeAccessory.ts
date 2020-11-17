@@ -3,10 +3,19 @@ import { Service, Logger, PlatformAccessory } from 'homebridge';
 import assert from 'assert';
 import stringify from 'json-stable-stringify-without-jsonify';
 
+/* HACK */
+import ZclTransactionSequenceNumber from 'zigbee-herdsman/dist/controller/helpers/zclTransactionSequenceNumber';
+
 import { ZigbeeHerdsmanPlatform } from '../platform';
 import { Zigbee, ZigbeeEntity, Device, Options, Meta, MessagePayload } from '../zigbee';
-import { getEndpointNames, objectHasProperties } from '../util/utils';
+import { getEndpointNames, objectHasProperties, secondsToMilliseconds } from '../util/utils';
 import { MessageQueue } from '../util/messageQueue';
+
+function peekNextTransactionSequenceNumber() {
+  const current = (<any>ZclTransactionSequenceNumber).number as number;
+  const next = current + 1;
+  return next > 255 ? 1 : next;
+}
 
 /**
  * Platform Accessory
@@ -29,7 +38,7 @@ export abstract class ZigbeeAccessory {
     assert(this.accessory);
 
     this.zigbeeEntity = this.zigbee.resolveEntity(device);
-    this.messageQueue = new MessageQueue(this.log, 5000);
+    this.messageQueue = new MessageQueue(this.log, secondsToMilliseconds(3));
 
     if (!this.zigbeeEntity) {
       this.log.error(`ZigbeeAccessory: failed to resolve device ${device.ieeeAddr}`);
@@ -103,8 +112,6 @@ export abstract class ZigbeeAccessory {
   }
 
   private async publishDeviceState(type: 'get' | 'set', state: any, options: Options = {}): Promise<any> {
-    Object.assign(this.cachedState, { ...state });
-
     const resolvedEntity = this.zigbeeEntity;
     if (!resolvedEntity.definition) {
       this.log.warn(`Device with modelID '${resolvedEntity.device?.modelID}' is not supported.`);
@@ -122,7 +129,9 @@ export abstract class ZigbeeAccessory {
     const converters = definition.toZigbee;
     const usedConverters: Map<number, any[]> = new Map();
     const device = this.device;
+    const waitKeys: string[] = [];
     const promises: Promise<MessagePayload>[] = [];
+    const promises2: Promise<any>[] = [];
 
     // For each attribute call the corresponding converter
     for (const [keyIn, value] of this.getEntries(state)) {
@@ -170,7 +179,7 @@ export abstract class ZigbeeAccessory {
         message: state,
         logger: this.log,
         device,
-        mapped: definition,
+        mapped: definition.meta,
         state: this.cachedState,
       };
 
@@ -197,8 +206,16 @@ export abstract class ZigbeeAccessory {
           Object.assign(this.cachedState, result.state);
         } else if (type === 'get' && converter.convertGet) {
           this.log.debug(`Publishing '${type}' '${key}' to '${resolvedEntity.name}' with message key '${messageKey}'`);
-          promises.push(this.messageQueue.enqueue(messageKey));
-          await converter.convertGet(actualTarget, key, meta);
+          const sequenceNumber = peekNextTransactionSequenceNumber();
+          this.log.warn('HACK: sequenceNumber:', sequenceNumber);
+          // promises.push(this.messageQueue.enqueue(messageKey));
+          // await converter.convertGet(actualTarget, key, meta);
+
+          const commandPromise = converter.convertGet(actualTarget, messageKey, meta).catch((error) => {
+            this.log.error(`Reading '${key}' to '${resolvedEntity.name}' failed: '${error}'`);
+            this.log.debug('stack:', error.stack);
+          });
+          waitKeys.push(this.messageQueue.enqueue(messageKey, commandPromise));
         } else {
           this.log.error(`No converter available for '${type}' '${key}' (${state[key]})`);
           continue;
@@ -209,18 +226,17 @@ export abstract class ZigbeeAccessory {
         this.log.debug(error.stack);
 
         const deferredMessage = this.messageQueue.dequeue(messageKey);
-        if (deferredMessage) {
-          deferredMessage.deferredPromise.reject(error);
-        }
+        deferredMessage?.responsePromise.reject(error);
       }
 
       usedConverters[endpointOrGroupID].push(converter);
     }
 
-    if (type === 'get' && promises.length) {
-      this.log.debug(`Sent ${promises.length} messages for device ${device.modelID}`);
-      const responses = await this.messageQueue.wait(promises);
-      this.log.debug(`Received ${responses.length} messages for device ${device.modelID}`);
+    if (type === 'get' && waitKeys.length) {
+      this.log.debug(`TX ${waitKeys.length} messages for device ${device.modelID}`);
+      this.log.debug('waitKeys:', waitKeys);
+      const responses = await this.messageQueue.wait(waitKeys);
+      this.log.debug(`RX ${responses.length} messages for device ${device.modelID}`);
 
       responses.forEach((response) => {
         const payload = this.getMessagePayload(response);

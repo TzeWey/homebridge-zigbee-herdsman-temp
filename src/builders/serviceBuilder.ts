@@ -28,7 +28,8 @@ export abstract class ServiceBuilder {
 
   public async setBrightnessPercent(brightness_percent: number) {
     const brightness = Math.round(Number(brightness_percent) * 2.55);
-    return await this.zigbeeAccessory.setDeviceState({ brightness });
+    const payload = await this.zigbeeAccessory.setDeviceState({ brightness });
+    return { brightness_percent: Math.round(Number(payload.brightness) / 2.55) };
   }
 
   public async getBrightnessPercent() {
