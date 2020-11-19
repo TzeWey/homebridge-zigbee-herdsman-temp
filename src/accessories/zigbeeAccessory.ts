@@ -12,6 +12,7 @@ import { getEndpointNames, objectHasProperties, secondsToMilliseconds } from '..
 import { MessageQueue } from '../util/messageQueue';
 
 function peekNextTransactionSequenceNumber() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const current = (<any>ZclTransactionSequenceNumber).number as number;
   const next = current + 1;
   return next > 255 ? 1 : next;
@@ -52,7 +53,7 @@ export abstract class ZigbeeAccessory {
       .setCharacteristic(Characteristic.Manufacturer, this.zigbeeEntity.definition?.vendor || device.manufacturerName)
       .setCharacteristic(Characteristic.Model, device.modelID)
       .setCharacteristic(Characteristic.SerialNumber, device.ieeeAddr)
-      .setCharacteristic(Characteristic.Name, this.zigbeeEntity.definition?.description || '');
+      .setCharacteristic(Characteristic.Name, this.name);
 
     // Resolve accessory services
     this.resolveServices();
@@ -62,22 +63,29 @@ export abstract class ZigbeeAccessory {
     this.onReady();
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public get state(): any {
     return this.cachedState;
   }
 
   public get name(): string {
-    return this.zigbeeEntity.definition?.description || '';
+    const Service = this.platform.Service;
+    const Characteristic = this.platform.Characteristic;
+    return (
+      (this.accessory.getService(Service.AccessoryInformation)!.getCharacteristic(Characteristic.Name)
+        .value as string) || this.device.modelID
+    );
   }
 
   public abstract resolveServices(): Service[];
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
   public onStateUpdate(state: any) {
-    // concrete class can override
+    // do nothing
   }
 
   public onReady() {
-    // concrete class can override
+    // do nothing
   }
 
   public async onIdentify() {
@@ -85,16 +93,21 @@ export abstract class ZigbeeAccessory {
   }
 
   public async processMessage(message: MessagePayload) {
+    let processed = false;
+
     if (message.type === 'readResponse') {
       const messageKey = `${message.device.ieeeAddr}|${message.endpoint.ID}|${message.meta.zclTransactionSequenceNumber}`;
-      this.messageQueue.processResponse(messageKey, message);
-    } else {
+      processed = this.messageQueue.processMessage(messageKey, message);
+    }
+
+    if (!processed) {
       const state = this.getMessagePayload(message);
       this.log.debug('Decoded state from incoming message', state);
       this.onStateUpdate(state);
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private getEntries(json: any) {
     /**
      * Order state & brightness based on current bulb state
@@ -107,27 +120,28 @@ export abstract class ZigbeeAccessory {
      */
     const entries = Object.entries(json);
     const sorter = typeof json.state === 'string' && json.state.toLowerCase() === 'off' ? 1 : -1;
-    entries.sort((a, b) => (['state', 'brightness', 'brightness_percent'].includes(a[0]) ? sorter : sorter * -1));
+    entries.sort((a) => (['state', 'brightness', 'brightness_percent'].includes(a[0]) ? sorter : sorter * -1));
     return entries;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async publishDeviceState(type: 'get' | 'set', state: any, options: Options = {}): Promise<any> {
     const resolvedEntity = this.zigbeeEntity;
     if (!resolvedEntity.definition) {
       this.log.warn(`Device with modelID '${resolvedEntity.device?.modelID}' is not supported.`);
       this.log.warn('Please see: https://www.zigbee2mqtt.io/how_tos/how_to_support_new_devices.html');
-      return this.cachedState;
+      return state;
     }
 
     const target = resolvedEntity.endpoint;
     if (!target) {
       this.log.warn(`Device with modelID '${resolvedEntity.device?.modelID}' has no endpoint.`);
-      return this.cachedState;
+      return state;
     }
 
     const definition = resolvedEntity.definition;
     const converters = definition.toZigbee;
-    const usedConverters: Map<number, any[]> = new Map();
+    const usedConverters: Map<number, any[]> = new Map(); // eslint-disable-line @typescript-eslint/no-explicit-any
     const device = this.device;
     const responseKeys: string[] = [];
 
@@ -239,6 +253,7 @@ export abstract class ZigbeeAccessory {
     return this.cachedState;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private getMessagePayload(data: MessagePayload, options: Options = {}): any {
     const payload = {};
     const resolvedEntity = this.zigbeeEntity;
@@ -266,6 +281,7 @@ export abstract class ZigbeeAccessory {
       const converted = converter.convert(
         resolvedEntity.definition,
         data,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (state: any) => {
           this.onStateUpdate(state);
         },

@@ -25,7 +25,7 @@ export class ZigbeeAccessoryResolver {
      */
     vendor = 'TuYa';
     this.registerResolver(vendor, ['TS0043'], TuyaOnOffTripleSwitch);
-    this.registerResolver(vendor, ['TS011F'], GenericOutlet);
+    this.registerResolver(vendor, ['TS011F_socket_module'], GenericOutlet);
 
     /*
      * IKEA

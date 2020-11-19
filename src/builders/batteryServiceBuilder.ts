@@ -1,9 +1,4 @@
-import {
-  CharacteristicValue,
-  CharacteristicEventTypes,
-  CharacteristicGetCallback,
-  CharacteristicSetCallback,
-} from 'homebridge';
+import { CharacteristicEventTypes, CharacteristicGetCallback } from 'homebridge';
 
 import { ZigbeeAccessory } from '../accessories';
 import { ServiceBuilder } from './serviceBuilder';

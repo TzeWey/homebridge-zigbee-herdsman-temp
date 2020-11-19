@@ -38,6 +38,7 @@ export class ZigbeePing {
     });
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onMessage(data: MessagePayload, resolvedEntity: ZigbeeEntity) {
     const device = data.device;
     if (!device) {

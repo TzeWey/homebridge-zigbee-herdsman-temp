@@ -49,15 +49,16 @@ export interface Options {
 export interface Meta {
   endpoint_name?: string;
   options?: Options;
-  message?: any;
+  message?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   logger?: Logger;
   device: Device;
-  mapped?: any;
-  state?: any;
+  mapped?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  state?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 export interface ToConverter {
   key: string[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   convertSet?: (entity: Endpoint, key: string, value: any, meta: Meta) => Promise<any>;
   convertGet?: (entity: Endpoint, key: string, meta?: Meta) => Promise<void>;
 }
@@ -65,6 +66,7 @@ export interface ToConverter {
 export interface FromConverter {
   cluster: string;
   type: string | string[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   convert: (model, message: MessagePayload, publish: (...args) => void, options: any, meta: Meta) => Partial<any>;
 }
 
@@ -95,8 +97,7 @@ export interface ZigbeeDefinition {
   toZigbee: ToConverter[];
   meta?: Partial<Meta>;
   configure?: (device: Device, coordinatorEndpoint: Endpoint) => Promise<void>;
-
-  [key: string]: any;
+  [key: string]: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 export interface ZigbeeEntity {
@@ -106,5 +107,5 @@ export interface ZigbeeEntity {
   endpoint?: Endpoint;
   name: string;
   definition?: ZigbeeDefinition;
-  settings?: any;
+  settings?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }

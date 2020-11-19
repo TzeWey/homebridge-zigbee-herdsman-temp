@@ -164,20 +164,18 @@ export class ZigbeeHerdsmanPlatform implements DynamicPlatformPlugin {
 
       const existingAccessory = this.accessories.get(uuid);
       if (existingAccessory) {
-        this.log.info(`> Restoring existing accessory from cache: ${existingAccessory.displayName}`);
-
         // Update accessory cache with any changes to the accessory details and information
         const zigbeeAccessory = new ZigbeeAccessory(this, existingAccessory, device);
         this.zigbeeAccessories.set(uuid, zigbeeAccessory);
+        this.log.info('> Restoring existing accessory from cache:', zigbeeAccessory.name);
         this.api.updatePlatformAccessories([existingAccessory]);
       } else {
-        this.log.info(`> Adding new accessory: ${device.modelID}`);
-
         // Create a new accessory and link the accessory to the platform
-        const accessory = new this.api.platformAccessory(device.ieeeAddr, uuid);
-        const zigbeeAccessory = new ZigbeeAccessory(this, accessory, device);
+        const newAccessory = new this.api.platformAccessory(device.ieeeAddr, uuid);
+        const zigbeeAccessory = new ZigbeeAccessory(this, newAccessory, device);
         this.zigbeeAccessories.set(uuid, zigbeeAccessory);
-        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+        this.log.info('> Adding new accessory:', zigbeeAccessory.name);
+        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [newAccessory]);
       }
     });
   }

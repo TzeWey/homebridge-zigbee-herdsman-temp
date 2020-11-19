@@ -1,6 +1,5 @@
 import { Logger } from 'homebridge';
 import assert from 'assert';
-import Timeout = NodeJS.Timeout;
 
 /**
  * A new instance of deferred is constructed by calling `new DeferredPromse<T>()`.
@@ -28,7 +27,7 @@ export class DeferredPromise<T> implements Promise<T> {
 
   private _promise: Promise<T>;
   private _resolve!: (value?: T | PromiseLike<T>) => void;
-  private _reject!: (reason?: any) => void;
+  private _reject!: (reason?: any) => void; // eslint-disable-line @typescript-eslint/no-explicit-any
   private _state: 'pending' | 'fulfilled' | 'rejected' = 'pending';
 
   public get state(): 'pending' | 'fulfilled' | 'rejected' {
@@ -48,11 +47,12 @@ export class DeferredPromise<T> implements Promise<T> {
 
   public then<TResult1, TResult2>(
     onfulfilled?: (value: T) => TResult1 | PromiseLike<TResult1>,
-    onrejected?: (reason: any) => TResult2 | PromiseLike<TResult2>,
+    onrejected?: (reason: any) => TResult2 | PromiseLike<TResult2>, // eslint-disable-line @typescript-eslint/no-explicit-any
   ): Promise<TResult1 | TResult2> {
     return this._promise.then(onfulfilled, onrejected);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public catch<TResult>(onrejected?: (reason: any) => TResult | PromiseLike<TResult>): Promise<T | TResult> {
     return this._promise.catch(onrejected);
   }
@@ -66,6 +66,7 @@ export class DeferredPromise<T> implements Promise<T> {
     this._state = 'fulfilled';
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public reject(reason?: any): void {
     this._reject(reason);
     this._state = 'rejected';
@@ -107,13 +108,14 @@ export class MessageQueue<KEY, RESPONSE> {
     return state;
   }
 
-  processResponse(key: KEY, response: RESPONSE) {
+  processMessage(key: KEY, response: RESPONSE) {
     const state = this.dequeue(key);
     if (!state) {
-      this.log.warn(`processResponse: key '${key}' not found`);
-      return;
+      this.log.debug(`messageQueue: message '${key}' not found`);
+      return false;
     }
     state.responsePromise.resolve(response);
+    return true;
   }
 
   async wait(keys: KEY[]): Promise<RESPONSE[]> {
@@ -133,7 +135,7 @@ export class MessageQueue<KEY, RESPONSE> {
     try {
       return await Promise.all(waitPromises);
     } catch (e) {
-      this.log.debug('queue:', e.message);
+      this.log.debug('messageQueue:', e.message);
       return [];
     }
   }

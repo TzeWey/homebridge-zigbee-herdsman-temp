@@ -28,10 +28,11 @@ export class ZigbeeConfigure {
   }
 
   onDeviceJoined(data: DeviceJoinedPayload, resolvedEntity: ZigbeeEntity) {
-    const device = <any>data.device;
+    const device = data.device;
+    const meta = (<any>device).meta; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-    if (Object.prototype.hasOwnProperty.call(device.meta, 'configured')) {
-      delete device.meta.configured;
+    if (Object.prototype.hasOwnProperty.call(meta, 'configured')) {
+      delete meta.configured;
       data.device.save();
     }
 
@@ -51,11 +52,15 @@ export class ZigbeeConfigure {
       return false;
     }
 
+    if (!resolvedEntity.device) {
+      return false;
+    }
+
+    const meta = (<any>resolvedEntity.device).meta; // eslint-disable-line @typescript-eslint/no-explicit-any
     if (
-      resolvedEntity.device &&
-      (<any>resolvedEntity.device).meta &&
-      Object.prototype.hasOwnProperty.call((<any>resolvedEntity.device).meta, 'configured') &&
-      (<any>resolvedEntity.device).meta.configured === resolvedEntity.definition?.meta?.configureKey
+      meta &&
+      Object.prototype.hasOwnProperty.call(meta, 'configured') &&
+      meta.configured === resolvedEntity.definition?.meta?.configureKey
     ) {
       return false;
     }
@@ -99,6 +104,7 @@ export class ZigbeeConfigure {
     try {
       await resolvedEntity.definition.configure(device, this.coordinatorEndpoint);
       this.log.info(`Successfully configured '${resolvedEntity.name}'`);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (<any>device).meta.configured = resolvedEntity.definition.meta?.configureKey;
       device.save();
     } catch (error) {
