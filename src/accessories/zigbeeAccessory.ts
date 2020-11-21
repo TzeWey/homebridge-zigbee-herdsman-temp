@@ -78,6 +78,14 @@ export abstract class ZigbeeAccessory extends EventEmitter {
     return this.device.modelID || this.accessory.displayName;
   }
 
+  public get description(): string {
+    return this.zigbeeEntity?.definition?.description || this.name;
+  }
+
+  public get vendor(): string {
+    return this.zigbeeEntity?.definition?.vendor || this.device.manufacturerName;
+  }
+
   protected abstract resolveServices(): Service[];
   protected abstract onStateUpdate(state: any): Promise<void>; // eslint-disable-line @typescript-eslint/no-explicit-any
   protected abstract onIdentify(): Promise<void>;
