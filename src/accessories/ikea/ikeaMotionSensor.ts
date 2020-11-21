@@ -6,7 +6,7 @@ export class IkeaMotionSensor extends ZigbeeAccessory {
   private sensorService!: Service;
   private batteryService!: Service;
 
-  resolveServices(): Service[] {
+  protected resolveServices(): Service[] {
     const Service = this.platform.api.hap.Service;
     const Characteristic = this.platform.api.hap.Characteristic;
 
@@ -19,33 +19,21 @@ export class IkeaMotionSensor extends ZigbeeAccessory {
         callback(null, this.state.occupancy);
       });
 
-    this.sensorService
-      .getCharacteristic(Characteristic.StatusLowBattery)
-      .on(CharacteristicEventTypes.GET, async (callback: CharacteristicGetCallback) => {
-        callback(
-          null,
-          this.state.battery && this.state.battery <= 10
-            ? Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW
-            : Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL,
-        );
-      });
-
     this.batteryService = new BatteryServiceBuilder(this).build();
 
     return [this.sensorService, this.batteryService];
   }
 
-  public async onStateUpdate(state: { occupancy: boolean; battery: number }) {
+  protected async onStateUpdate(state: { occupancy?: boolean }) {
     const Characteristic = this.platform.Characteristic;
 
-    this.sensorService.updateCharacteristic(Characteristic.MotionDetected, state.occupancy);
-    this.sensorService.updateCharacteristic(
-      Characteristic.StatusLowBattery,
-      state.battery && state.battery <= 10
-        ? Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW
-        : Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL,
-    );
+    if (state.occupancy) {
+      this.log.info('IkeaMotionSensor: MotionDetected:', state.occupancy);
+      this.sensorService.updateCharacteristic(Characteristic.MotionDetected, state.occupancy);
+    }
+  }
 
-    this.batteryService.updateCharacteristic(Characteristic.BatteryLevel, state.battery);
+  protected async onIdentify() {
+    // do nothing
   }
 }

@@ -36,7 +36,7 @@ export class ZigbeeHerdsmanPlatform implements DynamicPlatformPlugin {
   private readonly zigbeePing: ZigbeePing;
 
   constructor(public readonly log: Logger, public readonly config: PlatformConfig, public readonly api: API) {
-    const databasePath = path.join(this.api.user.storagePath(), 'zigbee.db');
+    const databasePath = path.join(this.api.user.storagePath(), 'database.db');
     const coordinatorBackupPath = path.join(this.api.user.storagePath(), 'coordinator.json');
     this.zigbee = new Zigbee(this.log, {
       port: '/dev/ttyNET3',

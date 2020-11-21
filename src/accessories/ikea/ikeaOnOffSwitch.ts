@@ -7,7 +7,7 @@ export class IkeaOnOffSwitch extends ZigbeeAccessory {
   private switchServiceOff!: Service;
   private switchBattery!: Service;
 
-  resolveServices(): Service[] {
+  protected resolveServices(): Service[] {
     const Characteristic = this.platform.Characteristic;
     const ProgrammableSwitchEvent = Characteristic.ProgrammableSwitchEvent;
 
@@ -27,7 +27,7 @@ export class IkeaOnOffSwitch extends ZigbeeAccessory {
     return [this.switchServiceOn, this.switchServiceOff, this.switchBattery];
   }
 
-  public async onStateUpdate(state: { click: 'brightness_up' | 'brightness_down' | 'on' | 'off' }) {
+  protected async onStateUpdate(state: { click: 'brightness_up' | 'brightness_down' | 'on' | 'off' }) {
     const Characteristic = this.platform.Characteristic;
     const ProgrammableSwitchEvent = Characteristic.ProgrammableSwitchEvent;
 
@@ -45,5 +45,9 @@ export class IkeaOnOffSwitch extends ZigbeeAccessory {
         this.switchServiceOff.getCharacteristic(ProgrammableSwitchEvent).setValue(ProgrammableSwitchEvent.SINGLE_PRESS);
         break;
     }
+  }
+
+  protected async onIdentify() {
+    // do nothing
   }
 }

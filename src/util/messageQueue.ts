@@ -26,13 +26,8 @@ export class DeferredPromise<T> implements Promise<T> {
   [Symbol.toStringTag]: 'Promise';
 
   private _promise: Promise<T>;
-  private _resolve!: (value?: T | PromiseLike<T>) => void;
+  private _resolve!: (value?: any) => void; // eslint-disable-line @typescript-eslint/no-explicit-any
   private _reject!: (reason?: any) => void; // eslint-disable-line @typescript-eslint/no-explicit-any
-  private _state: 'pending' | 'fulfilled' | 'rejected' = 'pending';
-
-  public get state(): 'pending' | 'fulfilled' | 'rejected' {
-    return this._state;
-  }
 
   public get promise() {
     return this._promise;
@@ -53,7 +48,7 @@ export class DeferredPromise<T> implements Promise<T> {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public catch<TResult>(onrejected?: (reason: any) => TResult | PromiseLike<TResult>): Promise<T | TResult> {
+  public async catch<TResult>(onrejected?: (reason: any) => TResult | PromiseLike<TResult>): Promise<T | TResult> {
     return this._promise.catch(onrejected);
   }
 
@@ -63,13 +58,11 @@ export class DeferredPromise<T> implements Promise<T> {
 
   public resolve(value?: T | PromiseLike<T>): void {
     this._resolve(value);
-    this._state = 'fulfilled';
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public reject(reason?: any): void {
     this._reject(reason);
-    this._state = 'rejected';
   }
 }
 

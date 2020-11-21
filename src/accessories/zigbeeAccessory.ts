@@ -1,5 +1,6 @@
 import { Service, Logger, PlatformAccessory } from 'homebridge';
 
+import { EventEmitter } from 'events';
 import assert from 'assert';
 import stringify from 'json-stable-stringify-without-jsonify';
 
@@ -10,6 +11,7 @@ import { ZigbeeHerdsmanPlatform } from '../platform';
 import { Zigbee, ZigbeeEntity, Device, Options, Meta, MessagePayload } from '../zigbee';
 import { getEndpointNames, objectHasProperties, secondsToMilliseconds } from '../util/utils';
 import { MessageQueue } from '../util/messageQueue';
+import { Events } from '.';
 
 function peekNextTransactionSequenceNumber() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -23,7 +25,7 @@ function peekNextTransactionSequenceNumber() {
  * An instance of this class is created for each accessory your platform registers
  * Each accessory may expose multiple services of different service types.
  */
-export abstract class ZigbeeAccessory {
+export abstract class ZigbeeAccessory extends EventEmitter {
   public readonly log: Logger = this.platform.log;
   private zigbee: Zigbee = this.platform.zigbee;
   private zigbeeEntity: ZigbeeEntity;
@@ -35,6 +37,7 @@ export abstract class ZigbeeAccessory {
     public readonly accessory: PlatformAccessory,
     public readonly device: Device,
   ) {
+    super();
     assert(this.platform);
     assert(this.accessory);
 
@@ -45,6 +48,9 @@ export abstract class ZigbeeAccessory {
       this.log.error(`ZigbeeAccessory: failed to resolve device ${device.ieeeAddr}`);
       return;
     }
+
+    // Update entity name with accessory name
+    this.zigbeeEntity.name = this.name;
 
     // Set common accessory information
     const Characteristic = this.platform.Characteristic;
@@ -60,7 +66,7 @@ export abstract class ZigbeeAccessory {
 
     this.accessory.on('identify', this.onIdentify.bind(this));
 
-    this.onReady();
+    this.emit(Events.ready);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -69,27 +75,17 @@ export abstract class ZigbeeAccessory {
   }
 
   public get name(): string {
-    const Service = this.platform.Service;
-    const Characteristic = this.platform.Characteristic;
-    return (
-      (this.accessory.getService(Service.AccessoryInformation)!.getCharacteristic(Characteristic.Name)
-        .value as string) || this.device.modelID
-    );
+    return this.device.modelID || this.accessory.displayName;
   }
 
-  public abstract resolveServices(): Service[];
+  protected abstract resolveServices(): Service[];
+  protected abstract onStateUpdate(state: any): Promise<void>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  protected abstract onIdentify(): Promise<void>;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
-  public onStateUpdate(state: any) {
-    // do nothing
-  }
-
-  public onReady() {
-    // do nothing
-  }
-
-  public async onIdentify() {
-    await this.identify();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private async updateState(state: any) {
+    this.emit(Events.stateUpdate, state);
+    await this.onStateUpdate(state);
   }
 
   public async processMessage(message: MessagePayload) {
@@ -103,7 +99,7 @@ export abstract class ZigbeeAccessory {
     if (!processed) {
       const state = this.getMessagePayload(message);
       this.log.debug('Decoded state from incoming message', state);
-      this.onStateUpdate(state);
+      this.updateState(state);
     }
   }
 
@@ -283,7 +279,7 @@ export abstract class ZigbeeAccessory {
         data,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (state: any) => {
-          this.onStateUpdate(state);
+          this.updateState(state);
         },
         options,
         meta,
@@ -301,9 +297,5 @@ export abstract class ZigbeeAccessory {
 
   public async getDeviceState<T>(json: T, options: Options = {}): Promise<T> {
     return this.publishDeviceState('get', json, options);
-  }
-
-  public async identify() {
-    return this.setDeviceState({ alert: 'select' });
   }
 }

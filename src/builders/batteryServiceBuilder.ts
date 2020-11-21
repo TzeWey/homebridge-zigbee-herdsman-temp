@@ -1,6 +1,6 @@
 import { CharacteristicEventTypes, CharacteristicGetCallback } from 'homebridge';
 
-import { ZigbeeAccessory } from '../accessories';
+import { ZigbeeAccessory, Events } from '../accessories';
 import { ServiceBuilder } from './serviceBuilder';
 
 export class BatteryServiceBuilder extends ServiceBuilder {
@@ -19,5 +19,12 @@ export class BatteryServiceBuilder extends ServiceBuilder {
         const battery = (this.zigbeeAccessory.state.battery as number) || 100; // assume 100% battery at initialization
         callback(null, battery);
       });
+
+    this.zigbeeAccessory.on(Events.stateUpdate, (state: { battery?: number }) => {
+      if (state.battery) {
+        this.log.info('BatteryServiceBuilder: BatteryLevel:', state.battery);
+        this.service.updateCharacteristic(Characteristic.BatteryLevel, state.battery);
+      }
+    });
   }
 }

@@ -8,7 +8,7 @@ export class TuyaOnOffTripleSwitch extends ZigbeeAccessory {
   private switchServiceButton3!: Service;
   private batteryService!: Service;
 
-  resolveServices(): Service[] {
+  protected resolveServices(): Service[] {
     const ProgrammableSwitchEvent = this.platform.Characteristic.ProgrammableSwitchEvent;
 
     this.switchServiceButton1 = new ProgrammableSwitchServiceBuilder(this)
@@ -40,7 +40,7 @@ export class TuyaOnOffTripleSwitch extends ZigbeeAccessory {
     return [this.switchServiceButton1, this.switchServiceButton2, this.switchServiceButton3, this.batteryService];
   }
 
-  public async onStateUpdate(state: {
+  protected async onStateUpdate(state: {
     action:
       | '1_single'
       | '1_double'
@@ -103,5 +103,9 @@ export class TuyaOnOffTripleSwitch extends ZigbeeAccessory {
           .setValue(ProgrammableSwitchEvent.LONG_PRESS);
         break;
     }
+  }
+
+  protected async onIdentify() {
+    // do nothing
   }
 }
