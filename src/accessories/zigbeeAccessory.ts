@@ -4,21 +4,12 @@ import { EventEmitter } from 'events';
 import assert from 'assert';
 import stringify from 'json-stable-stringify-without-jsonify';
 
-/* HACK */
-import ZclTransactionSequenceNumber from 'zigbee-herdsman/dist/controller/helpers/zclTransactionSequenceNumber';
-
 import { ZigbeeHerdsmanPlatform } from '../platform';
 import { Zigbee, ZigbeeEntity, Device, Options, Meta, MessagePayload } from '../zigbee';
 import { getEndpointNames, objectHasProperties, secondsToMilliseconds } from '../util/utils';
+import { peekNextTransactionSequenceNumber } from '../util/zcl';
 import { MessageQueue } from '../util/messageQueue';
 import { Events } from '.';
-
-function peekNextTransactionSequenceNumber() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const current = (<any>ZclTransactionSequenceNumber).number as number;
-  const next = current + 1;
-  return next > 255 ? 1 : next;
-}
 
 /**
  * Platform Accessory
@@ -26,11 +17,11 @@ function peekNextTransactionSequenceNumber() {
  * Each accessory may expose multiple services of different service types.
  */
 export abstract class ZigbeeAccessory extends EventEmitter {
-  public readonly log: Logger = this.platform.log;
-  private zigbee: Zigbee = this.platform.zigbee;
-  private zigbeeEntity: ZigbeeEntity;
-  private messageQueue: MessageQueue<string, MessagePayload>;
-  private cachedState = {};
+  protected readonly log: Logger = this.platform.log;
+  private readonly zigbee: Zigbee = this.platform.zigbee;
+  private readonly zigbeeEntity: ZigbeeEntity;
+  private readonly messageQueue: MessageQueue<string, MessagePayload>;
+  private readonly messagePublish: (...args: any[]) => void; // eslint-disable-line @typescript-eslint/no-explicit-any
 
   constructor(
     public readonly platform: ZigbeeHerdsmanPlatform,
@@ -43,6 +34,7 @@ export abstract class ZigbeeAccessory extends EventEmitter {
 
     this.zigbeeEntity = this.zigbee.resolveEntity(device);
     this.messageQueue = new MessageQueue(this.log, secondsToMilliseconds(2));
+    this.messagePublish = this.updateState.bind(this);
 
     if (!this.zigbeeEntity) {
       this.log.error(`ZigbeeAccessory: failed to resolve device ${device.ieeeAddr}`);
@@ -71,7 +63,7 @@ export abstract class ZigbeeAccessory extends EventEmitter {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public get state(): any {
-    return this.cachedState;
+    return this.accessory.context;
   }
 
   public get name(): string {
@@ -92,6 +84,7 @@ export abstract class ZigbeeAccessory extends EventEmitter {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async updateState(state: any) {
+    Object.assign(this.state, state);
     this.emit(Events.stateUpdate, state);
     await this.onStateUpdate(state);
   }
@@ -105,9 +98,11 @@ export abstract class ZigbeeAccessory extends EventEmitter {
     }
 
     if (!processed) {
-      const state = this.getMessagePayload(message);
+      const state = this.getMessagePayload(message, this.messagePublish);
       this.log.debug('Decoded state from incoming message', state);
-      this.updateState(state);
+      if (state) {
+        this.messagePublish(state);
+      }
     }
   }
 
@@ -117,7 +112,7 @@ export abstract class ZigbeeAccessory extends EventEmitter {
      * Order state & brightness based on current bulb state
      *
      * Not all bulbs support setting the color/color_temp while it is off
-     * this results in inconsistant behavior between different vendors.
+     * this results in inconsistent behavior between different vendors.
      *
      * bulb on => move state & brightness to the back
      * bulb off => move state & brightness to the front
@@ -126,6 +121,40 @@ export abstract class ZigbeeAccessory extends EventEmitter {
     const sorter = typeof json.state === 'string' && json.state.toLowerCase() === 'off' ? 1 : -1;
     entries.sort((a) => (['state', 'brightness', 'brightness_percent'].includes(a[0]) ? sorter : sorter * -1));
     return entries;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private getMessagePayload(data: MessagePayload, publish: (...args: any[]) => void, options: Options = {}): any {
+    const payload = {};
+    const resolvedEntity = this.zigbeeEntity;
+
+    if (!resolvedEntity.definition) {
+      return;
+    }
+
+    const converters = resolvedEntity.definition.fromZigbee.filter((c) => {
+      const type = Array.isArray(c.type) ? c.type.includes(data.type) : c.type === data.type;
+      return c.cluster === data.cluster && type;
+    });
+
+    // Check if there is an available converter, genOta messages are not interesting.
+    if (!converters || (!converters.length && data.cluster !== 'genOta' && data.cluster !== 'genTime')) {
+      this.log.warn(
+        `No converter available for '${resolvedEntity.definition.model}' with cluster '${data.cluster}' ` +
+          `and type '${data.type}' and data '${stringify(data.data)}'`,
+      );
+      return;
+    }
+
+    const meta: Meta = { device: data.device, logger: this.log };
+    converters.forEach((converter) => {
+      const converted = converter.convert(resolvedEntity.definition, data, publish, options, meta);
+      if (converted) {
+        Object.assign(payload, converted);
+      }
+    });
+
+    return payload;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -155,7 +184,7 @@ export abstract class ZigbeeAccessory extends EventEmitter {
       let endpointName = target.ID.toString();
       let actualTarget = target;
 
-      // When the key has a endpointName included (e.g. state_right), this will override the target.
+      // When the key has an endpointName included (e.g. state_right), this will override the target.
       if (key.includes('_')) {
         const underscoreIndex = key.lastIndexOf('_');
         const possibleEndpointName = key.substring(underscoreIndex + 1, key.length);
@@ -172,6 +201,7 @@ export abstract class ZigbeeAccessory extends EventEmitter {
         }
       }
 
+      // TODO: Implement group handling
       const endpointOrGroupID = actualTarget.ID;
       if (!usedConverters.has(endpointOrGroupID)) {
         usedConverters[endpointOrGroupID] = [];
@@ -196,7 +226,7 @@ export abstract class ZigbeeAccessory extends EventEmitter {
         logger: this.log,
         device,
         mapped: definition.meta,
-        state: this.cachedState,
+        state: state,
       };
 
       if (type === 'set' && converter.convertSet) {
@@ -219,7 +249,7 @@ export abstract class ZigbeeAccessory extends EventEmitter {
             result.readAfterWriteTime,
           );
         }
-        Object.assign(this.cachedState, result.state);
+        Object.assign(state, result.state);
       } else if (type === 'get' && converter.convertGet) {
         const sequenceNumber = peekNextTransactionSequenceNumber();
         const messageKey = `${device.ieeeAddr}|${endpointOrGroupID}|${sequenceNumber}`;
@@ -238,65 +268,25 @@ export abstract class ZigbeeAccessory extends EventEmitter {
     }
 
     if (type === 'get' && responseKeys.length) {
-      this.log.debug(`TX ${responseKeys.length} message(s) for device ${device.modelID}`);
+      this.log.debug(`TX ${responseKeys.length} message(s) to device ${device.modelID}`);
       const responses = await this.messageQueue.wait(responseKeys);
-      this.log.debug(`RX ${responses.length} message(s) for device ${device.modelID}`);
+      this.log.debug(`RX ${responses.length} message(s) from device ${device.modelID}`);
 
       if (responses.length === 0) {
-        throw new Error('no response received');
+        throw new Error('No response received from device');
       }
 
       responses.forEach((response) => {
-        const payload = this.getMessagePayload(response);
-        this.log.debug(`Decoded message for ${device.modelID}`, payload);
-        Object.assign(this.cachedState, payload);
+        const payload = this.getMessagePayload(response, this.messagePublish);
+        this.log.debug('Decoded state from response message', payload);
+
+        // Update accessory state context only
+        // Do not emit the state update event to avoid double processing as this was an explicit 'get' request by the caller
+        Object.assign(this.state, payload);
       });
     }
 
-    this.log.debug(`Cached state for ${device.modelID}`, this.cachedState);
-    return this.cachedState;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private getMessagePayload(data: MessagePayload, options: Options = {}): any {
-    const payload = {};
-    const resolvedEntity = this.zigbeeEntity;
-
-    if (!resolvedEntity.definition) {
-      return;
-    }
-
-    const converters = resolvedEntity.definition.fromZigbee.filter((c) => {
-      const type = Array.isArray(c.type) ? c.type.includes(data.type) : c.type === data.type;
-      return c.cluster === data.cluster && type;
-    });
-
-    // Check if there is an available converter, genOta messages are not interesting.
-    if (!converters || (!converters.length && data.cluster !== 'genOta' && data.cluster !== 'genTime')) {
-      this.log.debug(
-        `No converter available for '${resolvedEntity.definition.model}' with cluster '${data.cluster}' ` +
-          `and type '${data.type}' and data '${stringify(data.data)}'`,
-      );
-      return;
-    }
-
-    const meta: Meta = { device: data.device, logger: this.log };
-    converters.forEach((converter) => {
-      const converted = converter.convert(
-        resolvedEntity.definition,
-        data,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (state: any) => {
-          this.updateState(state);
-        },
-        options,
-        meta,
-      );
-      if (converted) {
-        Object.assign(payload, converted);
-      }
-    });
-    return payload;
+    return this.state; // Return the accessory state context
   }
 
   public async setDeviceState<T>(json: T, options: Options = {}): Promise<T> {

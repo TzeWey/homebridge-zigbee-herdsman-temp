@@ -1,27 +1,6 @@
 import { Logger } from 'homebridge';
 import assert from 'assert';
 
-/**
- * A new instance of deferred is constructed by calling `new DeferredPromse<T>()`.
- * The purpose of the deferred object is to expose the associated Promise
- * instance APIs that can be used for signaling the successful
- * or unsuccessful completion, as well as the state of the task.
- * @export
- * @class DeferredPromise
- * @implements {Promise<T>}
- * @template T
- * @example
- * const deferred = new DeferredPromse<string>();
- * console.log(deferred.state); // 'pending'
- *
- * deferred
- * .then(str => console.log(str))
- * .catch(err => console.error(err));
- *
- * deferred.resolve('Foo');
- * console.log(deferred.state); // 'fulfilled'
- * // deferred.reject('Bar');
- */
 export class DeferredPromise<T> implements Promise<T> {
   [Symbol.toStringTag]: 'Promise';
 

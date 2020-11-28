@@ -13,7 +13,7 @@ import * as path from 'path';
 import retry from 'async-retry';
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
-import { Zigbee, ZigbeeEntity, ZigbeeConfigure, ZigbeeOnEvent, Events, MessagePayload, ZigbeePing } from './zigbee';
+import { Zigbee, ZigbeeEntity, Events, MessagePayload } from './zigbee';
 import { ZigbeeAccessory, ZigbeeAccessoryResolver } from './accessories';
 
 /**
@@ -31,14 +31,11 @@ export class ZigbeeHerdsmanPlatform implements DynamicPlatformPlugin {
 
   public readonly zigbee: Zigbee;
   public readonly zigbeeAccessoryResolver: ZigbeeAccessoryResolver;
-  private readonly zigbeeConfigure: ZigbeeConfigure;
-  private readonly zigbeeOnEvent: ZigbeeOnEvent;
-  private readonly zigbeePing: ZigbeePing;
 
   constructor(public readonly log: Logger, public readonly config: PlatformConfig, public readonly api: API) {
     const databasePath = path.join(this.api.user.storagePath(), 'database.db');
     const coordinatorBackupPath = path.join(this.api.user.storagePath(), 'coordinator.json');
-    this.zigbee = new Zigbee(this.log, {
+    this.zigbee = new Zigbee(this, {
       port: '/dev/ttyNET3',
       disableLED: false,
       panID: 13662,
@@ -50,10 +47,6 @@ export class ZigbeeHerdsmanPlatform implements DynamicPlatformPlugin {
     });
 
     this.zigbeeAccessoryResolver = new ZigbeeAccessoryResolver(this);
-
-    this.zigbeeConfigure = new ZigbeeConfigure(this, this.zigbee);
-    this.zigbeeOnEvent = new ZigbeeOnEvent(this, this.zigbee);
-    this.zigbeePing = new ZigbeePing(this, this.zigbee);
 
     this.zigbee.on(Events.adapterDisconnected, this.onZigbeeAdapterDisconnected.bind(this));
     this.zigbee.on(Events.message, this.onZigbeeMessage.bind(this));
@@ -87,16 +80,17 @@ export class ZigbeeHerdsmanPlatform implements DynamicPlatformPlugin {
           retries: 10,
           minTimeout: 1000,
           maxTimeout: 8000,
-          onRetry: () => this.log.info('Retrying connect to Zigbee hardware'),
+          onRetry: () => this.log.info('Retrying connect to ZigBee adapter'),
         },
       );
     } catch (error) {
       this.log.error('Zigbee Start:', error);
     }
-
     this.cleanupDevices();
     this.discoverDevices();
     this.log.info('Started platform:', this.config.name);
+
+    await this.zigbee.permitJoin(false);
   }
 
   private async stop() {

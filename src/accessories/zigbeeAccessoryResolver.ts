@@ -7,6 +7,7 @@ import { ZigbeeAccessory } from './zigbeeAccessory';
 
 import { GenericOutlet } from './generic';
 import { IkeaMotionSensor, IkeaOnOffSwitch, IkeaTadfriDimColor } from './ikea';
+import { TerncySmartLightSocket } from './terncy';
 import { TuyaOnOffTripleSwitch } from './tuya';
 
 export interface ZigbeeAccessoryCtor {
@@ -21,13 +22,6 @@ export class ZigbeeAccessoryResolver {
     let vendor: string;
 
     /*
-     * TuYa
-     */
-    vendor = 'TuYa';
-    this.registerResolver(vendor, ['TS0043'], TuyaOnOffTripleSwitch);
-    this.registerResolver(vendor, ['TS011F_socket_module'], GenericOutlet);
-
-    /*
      * IKEA
      */
     vendor = 'IKEA';
@@ -35,6 +29,19 @@ export class ZigbeeAccessoryResolver {
     this.registerResolver(vendor, ['E1525/E1745'], IkeaMotionSensor);
     this.registerResolver(vendor, ['E1743'], IkeaOnOffSwitch);
     this.registerResolver(vendor, ['LED1624G9'], IkeaTadfriDimColor);
+
+    /*
+     * TuYa
+     */
+    vendor = 'TuYa';
+    this.registerResolver(vendor, ['TS0043'], TuyaOnOffTripleSwitch);
+    this.registerResolver(vendor, ['TS011F_socket_module'], GenericOutlet);
+
+    /*
+     * TERNCY
+     */
+    vendor = 'TERNCY';
+    this.registerResolver(vendor, ['TERNCY-LS01'], TerncySmartLightSocket);
   }
 
   private getKey(vendor: string, model: string) {

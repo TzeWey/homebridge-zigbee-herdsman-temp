@@ -13,10 +13,11 @@ export class BatteryServiceBuilder extends ServiceBuilder {
       this.accessory.getService(this.platform.Service.BatteryService) ||
       this.accessory.addService(this.platform.Service.BatteryService);
 
+    // BatteryLevel, assume 100% battery if uninitialized
     this.service
       .getCharacteristic(Characteristic.BatteryLevel)
       .on(CharacteristicEventTypes.GET, async (callback: CharacteristicGetCallback) => {
-        const battery = (this.zigbeeAccessory.state.battery as number) || 100; // assume 100% battery at initialization
+        const battery = (this.zigbeeAccessory.state.battery as number) || 100;
         callback(null, battery);
       });
 
@@ -26,5 +27,8 @@ export class BatteryServiceBuilder extends ServiceBuilder {
         this.service.updateCharacteristic(Characteristic.BatteryLevel, state.battery);
       }
     });
+
+    // ChargingState, default to non-rechargable battery
+    this.service.setCharacteristic(Characteristic.ChargingState, Characteristic.ChargingState.NOT_CHARGEABLE);
   }
 }

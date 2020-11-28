@@ -14,6 +14,7 @@ export class ZigbeeConfigure {
     this.zigbee.on(Events.started, this.onStarted.bind(this));
     this.zigbee.on(Events.deviceJoined, this.onDeviceJoined.bind(this));
     this.zigbee.on(Events.message, this.onMessage.bind(this));
+    this.log.info(`Registered extension '${this.constructor.name}'`);
   }
 
   async onStarted() {

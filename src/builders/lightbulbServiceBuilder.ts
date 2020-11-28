@@ -9,7 +9,7 @@ import { ZigbeeAccessory } from '../accessories';
 import { ServiceBuilder } from './serviceBuilder';
 import { HSBType } from '../util/hsbType';
 
-export class LighbulbServiceBuilder extends ServiceBuilder {
+export class LightbulbServiceBuilder extends ServiceBuilder {
   constructor(protected readonly zigbeeAccessory: ZigbeeAccessory) {
     super(zigbeeAccessory);
     this.service =
@@ -17,7 +17,7 @@ export class LighbulbServiceBuilder extends ServiceBuilder {
       this.accessory.addService(this.platform.Service.Lightbulb);
   }
 
-  public withOnOff(): LighbulbServiceBuilder {
+  public withOnOff(): LightbulbServiceBuilder {
     const Characteristic = this.platform.Characteristic;
 
     this.service
@@ -47,7 +47,7 @@ export class LighbulbServiceBuilder extends ServiceBuilder {
     return this;
   }
 
-  public withBrightness(): LighbulbServiceBuilder {
+  public withBrightness(): LightbulbServiceBuilder {
     const Characteristic = this.platform.Characteristic;
 
     this.service
@@ -77,7 +77,7 @@ export class LighbulbServiceBuilder extends ServiceBuilder {
     return this;
   }
 
-  public withColorTemperature(): LighbulbServiceBuilder {
+  public withColorTemperature(): LightbulbServiceBuilder {
     const Characteristic = this.platform.Characteristic;
 
     this.service
@@ -106,7 +106,7 @@ export class LighbulbServiceBuilder extends ServiceBuilder {
     return this;
   }
 
-  public withHue(): LighbulbServiceBuilder {
+  public withHue(): LightbulbServiceBuilder {
     const Characteristic = this.platform.Characteristic;
 
     this.service
@@ -139,7 +139,7 @@ export class LighbulbServiceBuilder extends ServiceBuilder {
    * Special treatment for bulbs supporting only XY colors (IKEA Tådfri for example)
    * HomeKit only knows about HSB, so we need to manually convert values
    */
-  public withColorXY(): LighbulbServiceBuilder {
+  public withColorXY(): LightbulbServiceBuilder {
     const Characteristic = this.platform.Characteristic;
 
     // this.service
@@ -205,7 +205,7 @@ export class LighbulbServiceBuilder extends ServiceBuilder {
     return this;
   }
 
-  public withSaturation(): LighbulbServiceBuilder {
+  public withSaturation(): LightbulbServiceBuilder {
     const Characteristic = this.platform.Characteristic;
 
     this.service

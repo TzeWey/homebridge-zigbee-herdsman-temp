@@ -1,4 +1,4 @@
 export { BatteryServiceBuilder } from './batteryServiceBuilder';
-export { LighbulbServiceBuilder } from './lighbulbServiceBuilder';
+export { LightbulbServiceBuilder } from './lightbulbServiceBuilder';
 export { OutletServiceBuilder } from './outletServiceBuilder';
 export { ProgrammableSwitchServiceBuilder } from './programmableSwitchServiceBuilder';

@@ -1,5 +1,4 @@
 import { EventEmitter } from 'events';
-import { Logger } from 'homebridge';
 import { Controller } from 'zigbee-herdsman';
 import stringify from 'json-stable-stringify-without-jsonify';
 import { findByDevice } from 'zigbee-herdsman-converters';
@@ -12,12 +11,20 @@ import {
   DeviceLeavePayload,
 } from 'zigbee-herdsman/dist/controller/events';
 
+import { ZigbeeHerdsmanPlatform } from '../platform';
+
 import { ZigbeeConfig, ZigbeeEntity, ZigbeeDefinition, Device, DeviceType, Group, Events } from './types';
+import { ZigbeeConfigure, ZigbeeOnEvent, ZigbeePing } from './extensions';
 
 export class Zigbee extends EventEmitter {
-  private herdsman!: Controller;
+  private readonly herdsman: Controller;
+  private readonly log = this.platform.log;
 
-  constructor(private readonly log: Logger, private readonly config: ZigbeeConfig) {
+  private readonly zigbeeConfigure: ZigbeeConfigure;
+  private readonly zigbeeOnEvent: ZigbeeOnEvent;
+  private readonly zigbeePing: ZigbeePing;
+
+  constructor(private readonly platform: ZigbeeHerdsmanPlatform, private readonly config: ZigbeeConfig) {
     super();
     this.herdsman = new Controller({
       network: {
@@ -40,6 +47,11 @@ export class Zigbee extends EventEmitter {
       },
       acceptJoiningDeviceHandler: (ieeeAddr) => this.acceptJoiningDeviceHandler(ieeeAddr),
     });
+
+    // Initialize extensions
+    this.zigbeeConfigure = new ZigbeeConfigure(platform, this);
+    this.zigbeeOnEvent = new ZigbeeOnEvent(platform, this);
+    this.zigbeePing = new ZigbeePing(platform, this);
   }
 
   async start() {
@@ -142,14 +154,14 @@ export class Zigbee extends EventEmitter {
   private async onZigbeeDeviceAnnounce(data: DeviceAnnouncePayload) {
     const name = data.device && data.device.ieeeAddr;
     const resolvedEntity = this.resolveEntity(data.device);
-    this.log.debug(`Device '${name}' announced itself`);
+    this.log.info(`Device '${name}' announced itself`);
     this.emit(Events.deviceAnnounce, data, resolvedEntity);
   }
 
   private async onZigbeeDeviceLeave(data: DeviceLeavePayload) {
     const ieeeAddr = data.ieeeAddr;
     const resolvedEntity = this.resolveEntity(ieeeAddr);
-    this.log.warn(`Device '${ieeeAddr}' left the network`);
+    this.log.info(`Device '${ieeeAddr}' left the network`);
     this.emit(Events.deviceLeave, data, resolvedEntity);
   }
 
@@ -176,7 +188,7 @@ export class Zigbee extends EventEmitter {
   async permitJoin(permit: boolean, resolvedEntity?: ZigbeeEntity) {
     permit
       ? this.log.info(`Zigbee: allowing new devices to join${resolvedEntity ? ` via ${resolvedEntity.name}` : ''}.`)
-      : this.log.info('Zigbee: disabling joining new devices.');
+      : this.log.info('Zigbee: disabling joining of new devices.');
 
     if (resolvedEntity && permit) {
       await this.herdsman.permitJoin(permit, resolvedEntity.device);
@@ -271,7 +283,7 @@ export class Zigbee extends EventEmitter {
       }
     }
 
-    this.log.error('Failed to resolve entity: ', key);
+    this.log.warn('Failed to resolve entity: ', key);
     return null!;
   }
 }

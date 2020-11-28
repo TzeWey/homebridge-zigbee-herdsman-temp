@@ -27,7 +27,7 @@ export class IkeaMotionSensor extends ZigbeeAccessory {
   protected async onStateUpdate(state: { occupancy?: boolean }) {
     const Characteristic = this.platform.Characteristic;
 
-    if (state.occupancy) {
+    if (typeof state.occupancy !== 'undefined') {
       this.log.info('IkeaMotionSensor: MotionDetected:', state.occupancy);
       this.sensorService.updateCharacteristic(Characteristic.MotionDetected, state.occupancy);
     }
