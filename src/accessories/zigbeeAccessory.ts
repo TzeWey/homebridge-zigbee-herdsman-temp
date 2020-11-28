@@ -99,7 +99,7 @@ export abstract class ZigbeeAccessory extends EventEmitter {
 
     if (!processed) {
       const state = this.getMessagePayload(message, this.messagePublish);
-      this.log.debug('Decoded state from incoming message', state);
+      this.log.debug(`Decoded state for '${message.device.modelID}' from incoming message`, state);
       if (state) {
         this.messagePublish(state);
       }
@@ -278,7 +278,7 @@ export abstract class ZigbeeAccessory extends EventEmitter {
 
       responses.forEach((response) => {
         const payload = this.getMessagePayload(response, this.messagePublish);
-        this.log.debug('Decoded state from response message', payload);
+        this.log.debug(`Decoded state for '${device.modelID}' from response message`, payload);
 
         // Update accessory state context only
         // Do not emit the state update event to avoid double processing as this was an explicit 'get' request by the caller
