@@ -25,7 +25,7 @@ export class LightbulbServiceBuilder extends ServiceBuilder {
       .on(CharacteristicEventTypes.SET, async (value: CharacteristicValue, callback: CharacteristicSetCallback) => {
         try {
           const state = await this.setOn(value === true);
-          this.log.info(`New state for ${this.accessory.displayName}`, state);
+          this.debugState('setOn', state);
           callback();
         } catch (e) {
           callback(e);
@@ -37,7 +37,7 @@ export class LightbulbServiceBuilder extends ServiceBuilder {
       .on(CharacteristicEventTypes.GET, async (callback: CharacteristicGetCallback) => {
         try {
           const state = await this.getOnOffState();
-          this.log.debug(`Reporting ${state ? 'ON' : 'OFF'} for ${this.accessory.displayName}`);
+          this.debugState('getOnOffState', state);
           callback(null, state);
         } catch (e) {
           callback(e);
@@ -56,7 +56,7 @@ export class LightbulbServiceBuilder extends ServiceBuilder {
         const brightness_percent = value as number;
         try {
           const state = await this.setBrightnessPercent(brightness_percent);
-          this.log.debug(`Set Brightness for ${this.accessory.displayName}`, state.brightness_percent);
+          this.debugState('Brightness SET', state.brightness_percent);
           callback();
         } catch (e) {
           callback(e);
@@ -68,7 +68,7 @@ export class LightbulbServiceBuilder extends ServiceBuilder {
       .on(CharacteristicEventTypes.GET, async (callback: CharacteristicGetCallback) => {
         try {
           const brightness_percent = await this.getBrightnessPercent();
-          this.log.debug(`Reporting Brightness for ${this.accessory.displayName}`, brightness_percent);
+          this.debugState('Brightness GET', brightness_percent);
           callback(null, brightness_percent);
         } catch (e) {
           callback(e);
