@@ -87,7 +87,7 @@ export class ZigbeeHerdsmanPlatform implements DynamicPlatformPlugin {
       this.log.error('Zigbee Start:', error);
     }
     this.cleanupDevices();
-    this.discoverDevices();
+    this.configureDevices();
     this.log.info('Started platform:', this.config.name);
 
     await this.zigbee.permitJoin(false);
@@ -139,7 +139,7 @@ export class ZigbeeHerdsmanPlatform implements DynamicPlatformPlugin {
     removed.forEach((uuid) => this.accessories.delete(uuid));
   }
 
-  private async discoverDevices() {
+  private async configureDevices() {
     // Loop through each known Zigbee Device
     this.zigbee.getDevices().forEach((device) => {
       // Do not associate Coordinators with accessories
@@ -169,7 +169,9 @@ export class ZigbeeHerdsmanPlatform implements DynamicPlatformPlugin {
         this.api.updatePlatformAccessories([existingAccessory]);
       } else {
         // Create a new accessory and link the accessory to the platform
-        const newAccessory = new this.api.platformAccessory(device.ieeeAddr, uuid);
+        const zigbeeEntity = this.zigbee.resolveEntity(device);
+        const displayName = zigbeeEntity?.definition?.description || device.modelID || device.ieeeAddr;
+        const newAccessory = new this.api.platformAccessory(displayName, uuid);
         const zigbeeAccessory = new ZigbeeAccessory(this, newAccessory, device);
         this.zigbeeAccessories.set(uuid, zigbeeAccessory);
         this.log.info('> Adding new accessory:', zigbeeAccessory.vendor, zigbeeAccessory.description);
