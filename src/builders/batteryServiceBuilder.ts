@@ -23,12 +23,9 @@ export class BatteryServiceBuilder extends ServiceBuilder {
 
     this.zigbeeAccessory.on(Events.stateUpdate, (state: { battery?: number }) => {
       if (state.battery) {
-        this.log.info('BatteryServiceBuilder: BatteryLevel:', state.battery);
+        this.debugState('BatteryLevel', state.battery);
         this.service.updateCharacteristic(Characteristic.BatteryLevel, state.battery);
       }
     });
-
-    // ChargingState, default to non-rechargable battery
-    this.service.setCharacteristic(Characteristic.ChargingState, Characteristic.ChargingState.NOT_CHARGEABLE);
   }
 }

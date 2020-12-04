@@ -32,9 +32,9 @@ export class OutletServiceBuilder extends ServiceBuilder {
       })
       .on(CharacteristicEventTypes.GET, async (callback: CharacteristicGetCallback) => {
         try {
-          const state = await this.getOnOffState();
-          this.log.info(`Reporting state for ${this.accessory.displayName}: ${state}`);
-          callback(null, state);
+          const value = await this.getOnOffState();
+          this.debugState('getOnOffState', value);
+          callback(null, value);
         } catch (e) {
           callback(e);
         }

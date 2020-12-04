@@ -76,4 +76,8 @@ export abstract class ServiceBuilder {
     const payload = await this.zigbeeAccessory.getDeviceState({ color: { s: 0 } });
     return payload.color.s;
   }
+
+  protected debugState(name, value) {
+    this.log.debug(`[${this.accessory.displayName}] ${this.constructor.name}: ${name}:`, value);
+  }
 }

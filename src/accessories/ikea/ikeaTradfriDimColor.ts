@@ -2,7 +2,7 @@ import { Service } from 'homebridge';
 import { ZigbeeAccessory } from '../zigbeeAccessory';
 import { LightbulbServiceBuilder } from '../../builders';
 
-export class IkeaTadfriDimColor extends ZigbeeAccessory {
+export class IkeaTradfriDimColor extends ZigbeeAccessory {
   protected service!: Service;
 
   protected resolveServices() {

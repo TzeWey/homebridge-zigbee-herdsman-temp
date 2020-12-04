@@ -1,4 +1,4 @@
 export { IkeaMotionSensor } from './ikeaMotionSensor';
 export { IkeaOnOffSwitch } from './ikeaOnOffSwitch';
-export { IkeaTadfriDim } from './ikeaTadfriDim';
-export { IkeaTadfriDimColor } from './ikeaTadfriDimColor';
+export { IkeaTradfriDim } from './ikeaTradfriDim';
+export { IkeaTradfriDimColor } from './ikeaTradfriDimColor';
