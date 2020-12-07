@@ -14,21 +14,15 @@
       },
       "port": {
         "title": "Port",
-        "description": "Port for USB stick (example: /dev/tty.usbmodem144). If not set, it tries to find port automatically.",
+        "description": "location of the adapter (example: /dev/tty0). To auto-detect the port, leave empty.",
         "type": "string",
-        "required": false
+        "required": true
       },
-      "panId": {
-        "title": "PanId",
-        "description": "Identify the ZigBee PAN-ID. This id should be a value between 0 and 16383 (0x3FFF). You can also set it to 65535 (0xFFFF) to let ZigBee choose a random PAN-ID on its own.",
+      "panID": {
+        "title": "PAN ID",
+        "description": "Identify the ZigBee PAN-ID. This id should be a value between 0 and 16383 (0x3FFF).",
         "type": "number",
         "oneOf": [
-          {
-            "type": "number",
-            "default": 65535,
-            "minimum": 65535,
-            "maximum": 65535
-          },
           {
             "type": "number",
             "default": 0,
@@ -36,7 +30,7 @@
             "maximum": 16383
           }
         ],
-        "default": 65535,
+        "default": 13662,
         "required": true
       },
       "channel": {
@@ -47,30 +41,9 @@
         "default": 11,
         "required": true
       },
-      "database": {
-        "title": "Database",
-        "description": "Path to zigbee database. If not set, it uses 'homebridge_storage_path/zigbee.db' path.",
-        "type": "string",
-        "required": false
-      },
-      "coordinatorBackup": {
-        "title": "Coordinator Backup",
-        "description": "Path to zigbee coordinator database. If not set, it uses 'homebridge_storage_path/coordinator.json' path.",
-        "type": "string",
-        "required": false
-      },
-      "routerPollingInterval": {
-        "title": "Ping Interval",
-        "description": "Ping interval for routers to prevent them from sleeping (in seconds).",
-        "type": "number",
-        "default": 30,
-        "minimum": 10,
-        "maximum": 180,
-        "required": false
-      },
-      "disableLed": {
-        "title": "Disable Led",
-        "description": "Turn off the stick led indicator.",
+      "disableLED": {
+        "title": "Disable LED",
+        "description": "Enable/Disable the LED",
         "type": "boolean",
         "default": false,
         "required": false
@@ -80,12 +53,8 @@
   "form": [
     "name",
     "port",
-    "panId",
+    "panID",
     "channel",
-    "secondaryChannel",
-    "database",
-    "coordinatorBackup",
-    "routerPollingInterval",
-    "disableLed"
+    "disableLED"
   ]
 }
