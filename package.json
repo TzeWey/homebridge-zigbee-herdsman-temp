@@ -32,17 +32,17 @@
     "js-big-decimal": "^1.3.1",
     "json-stable-stringify-without-jsonify": "^1.0.1",
     "zigbee-herdsman": "^0.13.39",
-    "zigbee-herdsman-converters": "^13.0.12"
+    "zigbee-herdsman-converters": "^13.0.13"
   },
   "devDependencies": {
     "@types/node": "^14.14.10",
     "@typescript-eslint/eslint-plugin": "^4.9.0",
     "@typescript-eslint/parser": "^4.9.0",
-    "eslint": "^7.14.0",
+    "eslint": "^7.15.0",
     "homebridge": "^1.2.3",
     "nodemon": "^2.0.6",
     "rimraf": "^3.0.2",
-    "ts-node": "^9.1.0",
+    "ts-node": "^9.1.1",
     "typescript": "^4.1.2"
   }
 }
