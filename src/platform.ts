@@ -16,6 +16,13 @@ import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { Zigbee, ZigbeeEntity, Events, MessagePayload } from './zigbee';
 import { ZigbeeAccessory, ZigbeeAccessoryResolver } from './accessories';
 
+interface ZigbeeHerdsmanPlatformConfig extends PlatformConfig {
+  port?: string;
+  panID?: number;
+  channel?: number;
+  disableLED?: boolean;
+}
+
 /**
  * HomebridgePlatform
  * This class is the main constructor for your plugin, this is where you should
@@ -32,15 +39,19 @@ export class ZigbeeHerdsmanPlatform implements DynamicPlatformPlugin {
   public readonly zigbee: Zigbee;
   public readonly zigbeeAccessoryResolver: ZigbeeAccessoryResolver;
 
-  constructor(public readonly log: Logger, public readonly config: PlatformConfig, public readonly api: API) {
+  constructor(
+    public readonly log: Logger,
+    public readonly config: ZigbeeHerdsmanPlatformConfig,
+    public readonly api: API,
+  ) {
     const databasePath = path.join(this.api.user.storagePath(), 'database.db');
     const coordinatorBackupPath = path.join(this.api.user.storagePath(), 'coordinator.json');
     this.zigbee = new Zigbee(this, {
-      port: '/dev/ttyNET3',
-      disableLED: false,
-      panID: 13662,
+      port: config.port || '',
+      panID: config.panID || 13662,
+      channel: config.channel || 11,
+      disableLED: config.disableLED || false,
       extendedPanID: [0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd],
-      channel: 11,
       networkKey: [0x01, 0x03, 0x05, 0x07, 0x09, 0x0b, 0x0d, 0x0f, 0x00, 0x02, 0x04, 0x06, 0x08, 0x0a, 0x0c, 0x0d],
       databasePath,
       coordinatorBackupPath,
