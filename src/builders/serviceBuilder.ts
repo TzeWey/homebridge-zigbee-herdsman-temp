@@ -78,6 +78,7 @@ export abstract class ServiceBuilder {
   }
 
   protected debugState(name, value) {
-    this.log.debug(`[${this.accessory.displayName}] ${this.constructor.name}: ${name}:`, value);
+    const displayName = `${this.zigbeeAccessory.device.ieeeAddr}:${this.zigbeeAccessory.name}`;
+    this.log.info(`[${displayName}] ${this.constructor.name}: ${name}:`, value);
   }
 }
