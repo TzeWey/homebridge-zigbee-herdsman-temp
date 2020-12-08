@@ -9,7 +9,7 @@ import { GenericOutlet } from './generic';
 import { IkeaMotionSensor, IkeaOnOffSwitch, IkeaTradfriDimColor } from './ikea';
 import { TerncySmartLightSocket } from './terncy';
 import { TuyaOnOffTripleSwitch } from './tuya';
-import { XiaomiTemperatureHumidityPressureSensor } from './xiaomi';
+import { XiaomiMotionLightSensor, XiaomiTemperatureHumidityPressureSensor } from './xiaomi';
 
 export interface ZigbeeAccessoryCtor {
   new (platform: ZigbeeHerdsmanPlatform, accessory: PlatformAccessory, device: Device): ZigbeeAccessory;
@@ -54,6 +54,7 @@ export class ZigbeeAccessoryResolver {
      * Xiaomi
      */
     vendor = 'Xiaomi';
+    this.registerResolver(vendor, ['RTCGQ11LM'], XiaomiMotionLightSensor);
     this.registerResolver(vendor, ['WSDCGQ11LM'], XiaomiTemperatureHumidityPressureSensor);
   }
 
