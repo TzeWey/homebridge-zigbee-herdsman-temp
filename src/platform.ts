@@ -21,6 +21,7 @@ interface ZigbeeHerdsmanPlatformConfig extends PlatformConfig {
   panID?: number;
   channel?: number;
   disableLED?: boolean;
+  permitJoin?: boolean;
 }
 
 /**
@@ -101,7 +102,7 @@ export class ZigbeeHerdsmanPlatform implements DynamicPlatformPlugin {
     this.configureDevices();
     this.log.info('Started platform:', this.config.name);
 
-    await this.zigbee.permitJoin(false);
+    await this.zigbee.permitJoin(this.config.permitJoin || false);
   }
 
   private async stop() {

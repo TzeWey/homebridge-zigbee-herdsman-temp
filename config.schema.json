@@ -47,6 +47,13 @@
         "type": "boolean",
         "default": false,
         "required": false
+      },
+      "permitJoin": {
+        "title": "Permit Join",
+        "description": "Allow/Disallow new devices from joining the network",
+        "type": "boolean",
+        "default": false,
+        "required": false
       }
     }
   },
@@ -55,6 +62,7 @@
     "port",
     "panID",
     "channel",
-    "disableLED"
+    "disableLED",
+    "permitJoin"
   ]
 }
